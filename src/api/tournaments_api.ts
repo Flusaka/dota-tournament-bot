@@ -4,7 +4,7 @@ import * as Requests from '../interfaces/tournaments/requests';
 import * as Responses from '../interfaces/tournaments/responses';
 
 class TournamentsAPI implements ITournamentsAPI {
-    readonly axiosInstance = axios.create({
+    private readonly _axiosInstance = axios.create({
         baseURL: 'https://api.pandascore.co/dota2',
         headers: {
             common: {
@@ -16,7 +16,7 @@ class TournamentsAPI implements ITournamentsAPI {
 
     getUpcomingTournaments = async (request: Requests.UpcomingTournamentsRequest): Promise<Responses.UpcomingTournamentsResponse> | null => {
         try {
-            const response = await this.axiosInstance.get<Responses.UpcomingTournamentsResponse>('/tournaments/upcoming', {
+            const response = await this._axiosInstance.get<Responses.UpcomingTournamentsResponse>('/tournaments/upcoming', {
                 params: request
             });
             return response.data;
@@ -29,7 +29,7 @@ class TournamentsAPI implements ITournamentsAPI {
 
     getRunningTournaments = async (request: Requests.RunningTournamentsRequest): Promise<Responses.RunningTournamentsResponse> | null => {
         try {
-            const response = await this.axiosInstance.get<Responses.RunningTournamentsResponse>('/tournaments/running', {
+            const response = await this._axiosInstance.get<Responses.RunningTournamentsResponse>('/tournaments/running', {
                 params: request
             });
             return response.data;

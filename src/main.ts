@@ -16,9 +16,9 @@
 //     return console.log(`Server is listening on ${port}`);
 // });
 
-import TournamentsAPI from "./api/tournaments_api";
+import BotController from './controller/bot_controller';
+import TournamentsAPI from './api/tournaments_api';
+import DotaBot from './discord/bot';
 
-const tournamentsApi = new TournamentsAPI();
-tournamentsApi.getRunningTournaments({
-    sort: 'begin_at'
-});
+const botController = new BotController(new DotaBot(), new TournamentsAPI());
+botController.initialise();

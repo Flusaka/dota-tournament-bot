@@ -1,4 +1,6 @@
-type BaseMatch = {
+import { Stream } from "../streams/types";
+
+type Match = {
     readonly begin_at: Date | null;
     readonly detailed_stats: boolean;
     readonly draw: boolean;
@@ -19,11 +21,11 @@ type BaseMatch = {
     readonly scheduled_at: Date | null;
     readonly slug: string;
     readonly status: 'canceled' | 'finished' | 'not_started' | 'postponed' | 'running';
-    readonly streams_list: any;
+    readonly streams_list: Stream[];
     readonly tournament_id: number;
     readonly winner_id: number | null;
 }
 
 export {
-    BaseMatch
+    Match
 };

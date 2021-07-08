@@ -14,30 +14,18 @@ class TournamentsAPI implements ITournamentsAPI {
         responseType: 'json'
     });
 
-    getUpcomingTournaments = async (request: Requests.UpcomingTournamentsRequest): Promise<Responses.UpcomingTournamentsResponse> | null => {
-        try {
-            const response = await this.axiosInstance.get<Responses.UpcomingTournamentsResponse>('/tournaments/upcoming', {
-                params: request
-            });
-            return response.data;
-        }
-        catch (error) {
-            console.log(error);
-            return null;
-        }
+    getUpcomingTournaments = async (request: Requests.UpcomingTournamentsRequest): Promise<Responses.UpcomingTournamentsResponse> => {
+        const response = await this.axiosInstance.get<Responses.UpcomingTournamentsResponse>('/tournaments/upcoming', {
+            params: request
+        });
+        return response.data;
     }
 
-    getRunningTournaments = async (request: Requests.RunningTournamentsRequest): Promise<Responses.RunningTournamentsResponse> | null => {
-        try {
-            const response = await this.axiosInstance.get<Responses.RunningTournamentsResponse>('/tournaments/running', {
-                params: request
-            });
-            return response.data;
-        }
-        catch (error) {
-            console.log(error);
-            return null;
-        }
+    getRunningTournaments = async (request: Requests.RunningTournamentsRequest): Promise<Responses.RunningTournamentsResponse> => {
+        const response = await this.axiosInstance.get<Responses.RunningTournamentsResponse>('/tournaments/running', {
+            params: request
+        });
+        return response.data;
     }
 }
 

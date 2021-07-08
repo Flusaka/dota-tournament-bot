@@ -1,7 +1,7 @@
-import { BaseTournament } from './types';
+import { Tournament } from './types';
 
-type UpcomingTournamentsResponse = BaseTournament[];
-type RunningTournamentsResponse = BaseTournament[];
+type UpcomingTournamentsResponse = Tournament[];
+type RunningTournamentsResponse = Tournament[];
 
 export {
     UpcomingTournamentsResponse,

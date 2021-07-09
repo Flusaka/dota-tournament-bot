@@ -1,6 +1,8 @@
+import { DailyMatchesMessage } from './messages';
+
 interface IDotaBot {
     initialise: (readyCallback: () => void) => void;
-    postTournaments: () => void;
+    postDailyMatches: (message: DailyMatchesMessage) => void;
 }
 
 export {

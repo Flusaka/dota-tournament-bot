@@ -8,6 +8,7 @@ class TournamentsAPI implements ITournamentsAPI {
         baseURL: 'https://api.pandascore.co/dota2',
         headers: {
             common: {
+                // TODO: Move into env variable
                 Authorization: 'Bearer 8FG9WnjcQBp9FkS8PA6bTQAEKYQefsBhWBjOG_hC7VYu4vWLxNM'
             }
         },

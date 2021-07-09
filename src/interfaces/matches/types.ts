@@ -1,4 +1,15 @@
+import { Serie } from "../series/types";
 import { Stream } from "../streams/types";
+
+type Opponent = {
+    readonly acronym: string | null;
+    readonly id: number;
+    readonly image_url: string | null;
+    readonly location: string | null;
+    readonly modified_at: Date;
+    readonly name: string;
+    readonly slug: string | null;
+}
 
 type Match = {
     readonly begin_at: Date | null;
@@ -16,9 +27,11 @@ type Match = {
     readonly modified_at: Date;
     readonly name: string;
     readonly number_of_games: number;
+    readonly opponents: Opponent[];
     readonly original_scheduled_at: Date | null;
     readonly rescheduled: boolean;
     readonly scheduled_at: Date | null;
+    readonly serie: Serie;
     readonly slug: string;
     readonly status: 'canceled' | 'finished' | 'not_started' | 'postponed' | 'running';
     readonly streams_list: Stream[];

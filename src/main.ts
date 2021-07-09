@@ -19,6 +19,7 @@
 import BotController from './controller/bot_controller';
 import TournamentsAPI from './api/tournaments_api';
 import DotaBot from './discord/bot';
+import MatchesAPI from './api/matches_api';
 
-const botController = new BotController(new DotaBot(), new TournamentsAPI());
+const botController = new BotController(new DotaBot(), new TournamentsAPI(), new MatchesAPI());
 botController.initialise();

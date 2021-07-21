@@ -1,18 +1,18 @@
 import { League } from '../leagues/types';
-import { Match } from '../matches/types';
+import { BaseMatch } from '../matches/types';
 import { Serie } from '../series/types';
 import { Team } from '../teams/types';
 import { VideoGame } from '../videogames/types';
 
 type Tournament = {
-    readonly begin_at: Date | null;
-    readonly end_at: Date | null;
+    readonly begin_at: string | null;
+    readonly end_at: string | null;
     readonly id: number;
     readonly league: League;
     readonly league_id: number;
     readonly live_supported: boolean;
-    readonly matches: Match[];
-    readonly modified_at: Date | null;
+    readonly matches: BaseMatch[];
+    readonly modified_at: string | null;
     readonly name: string;
     readonly prizepool: string | null;
     readonly serie: Serie;

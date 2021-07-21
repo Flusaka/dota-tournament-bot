@@ -1,8 +1,8 @@
 type Match = {
-    // Game name
-    readonly gameName: string;
+    // Match title (e.g. OG vs Nigma)
+    readonly matchTitle: string;
 
-    // Stream
+    // Stream link
     readonly streamLink: string;
 
     // Start time
@@ -10,6 +10,7 @@ type Match = {
 }
 
 type DailyMatchesMessage = {
+    readonly tournamentName: string;
     readonly matches: Match[];
 }
 

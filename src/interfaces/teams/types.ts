@@ -3,7 +3,7 @@ type Team = {
     readonly id: number;
     readonly image_url: string | null;
     readonly location: string | null;
-    readonly modified_at: Date;
+    readonly modified_at: string;
     readonly name: string;
     readonly slug: string | null;
 }

@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { IMatchesAPI } from "../interfaces/matches/api";
-import { RunningMatchesRequest, UpcomingMatchesRequest } from "../interfaces/matches/requests";
-import { RunningMatchesResponse, UpcomingMatchesResponse } from "../interfaces/matches/responses";
+import { PastMatchesRequest, RunningMatchesRequest, UpcomingMatchesRequest } from "../interfaces/matches/requests";
+import { PastMatchesResponse, RunningMatchesResponse, UpcomingMatchesResponse } from "../interfaces/matches/responses";
 
 class MatchesAPI implements IMatchesAPI {
     private readonly axiosInstance = axios.create({
@@ -24,6 +24,13 @@ class MatchesAPI implements IMatchesAPI {
 
     getUpcomingMatches = async (request: UpcomingMatchesRequest): Promise<UpcomingMatchesResponse> => {
         const response = await this.axiosInstance.get<UpcomingMatchesResponse>('/upcoming', {
+            params: request
+        });
+        return response.data;
+    }
+
+    getPastMatches = async (request: PastMatchesRequest): Promise<PastMatchesResponse> => {
+        const response = await this.axiosInstance.get<UpcomingMatchesResponse>('/past', {
             params: request
         });
         return response.data;

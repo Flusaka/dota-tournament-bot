@@ -10,8 +10,10 @@ type BaseMatchesRequest = {
 
 type UpcomingMatchesRequest = BaseMatchesRequest;
 type RunningMatchesRequest = BaseMatchesRequest;
+type PastMatchesRequest = BaseMatchesRequest;
 
 export {
     UpcomingMatchesRequest,
-    RunningMatchesRequest
+    RunningMatchesRequest,
+    PastMatchesRequest
 };

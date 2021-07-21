@@ -1,12 +1,12 @@
 type Serie = {
-    readonly begin_at: Date | null;
+    readonly begin_at: string | null;
     readonly description: string | null;
-    readonly end_at: Date | null;
+    readonly end_at: string | null;
     readonly full_name: string;
     readonly id: number;
     readonly league: any;
     readonly league_id: number;
-    readonly modified_at: Date;
+    readonly modified_at: string;
     readonly name: string | null;
     readonly season: string | null;
     readonly slug: string;

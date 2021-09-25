@@ -8,8 +8,10 @@ type BaseTournamentsRequest = {
 
 type UpcomingTournamentsRequest = BaseTournamentsRequest;
 type RunningTournamentsRequest = BaseTournamentsRequest;
+type PastTournamentsRequest = BaseTournamentsRequest;
 
 export {
     UpcomingTournamentsRequest,
-    RunningTournamentsRequest
+    RunningTournamentsRequest,
+    PastTournamentsRequest
 };

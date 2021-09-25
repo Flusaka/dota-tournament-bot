@@ -2,14 +2,17 @@ import { IDotaBot } from "../interfaces/bot";
 import { DailyMatchesMessage, Match } from "../interfaces/messages";
 import { IMatchesAPI } from "../pandascore/interfaces/matches/api";
 import fs from 'fs';
+import { ITournamentsAPI } from "../pandascore/interfaces/tournaments/api";
 
 class BotController {
     private bot: IDotaBot;
     private matchesApi: IMatchesAPI;
+    private tournamentsApi: ITournamentsAPI;
 
-    constructor(bot: IDotaBot, matchesApi: IMatchesAPI) {
+    constructor(bot: IDotaBot, matchesApi: IMatchesAPI, tournamentsApi: ITournamentsAPI) {
         this.bot = bot;
         this.matchesApi = matchesApi;
+        this.tournamentsApi = tournamentsApi;
     }
 
     initialise = async () => {
@@ -40,12 +43,25 @@ class BotController {
         // });
 
         this.bot.initialise(async () => {
-            let upcomingMatches = await this.matchesApi.getUpcomingMatches({
-                sort: '-scheduled_at'
+            let upcomingTournaments = await this.tournamentsApi.getUpcomingTournaments({
+                sort: '-begin_at'
             });
 
-            upcomingMatches = upcomingMatches.filter(match => (match.serie.tier == 'c' || match.serie.tier == 'b' || match.serie.tier == 'a'))
-                .sort((a, b) => a.tournament_id - b.tournament_id);
+            // console.log(upcomingTournaments[0].begin_at);
+            // console.log(upcomingTournaments[0].end_at);
+
+            upcomingTournaments[0].matches.forEach((match) => {
+                console.log(`${match.name} - ${match.begin_at} to ${match.end_at}`);
+            });
+
+            // upcomingTournaments = upcomingTournaments.filter(tournament => (tournament.serie.tier == 'b' || tournament.serie.tier == 'a'));
+            // fs.writeFileSync("tournaments.json", JSON.stringify(upcomingTournaments, null, 2));
+            // let upcomingMatches = await this.matchesApi.getUpcomingMatches({
+            //     sort: '-scheduled_at'
+            // });
+
+            // upcomingMatches = upcomingMatches.filter(match => (match.serie.tier == 'c' || match.serie.tier == 'b' || match.serie.tier == 'a'))
+            //     .sort((a, b) => a.tournament_id - b.tournament_id);
 
 
             // while (upcomingMatches.length > 0) {
@@ -79,7 +95,6 @@ class BotController {
             //             };
             //         })
             //     });
-            //     // console.log(`Removing ${matchesInTournament.length} matches. ${upcomingMatches.length} remaining!`);
             // }
         });
     }

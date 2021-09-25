@@ -2,6 +2,7 @@ import { BaseLeague } from '../leagues/types';
 import { BaseMatch } from '../matches/types';
 import { BaseSerie } from '../series/types';
 import { BaseTeam } from '../teams/types';
+import { PlayerType } from '../common/player_type';
 import { VideoGame, VideoGameVersion } from '../videogames/types';
 
 type BaseTournament = {
@@ -16,6 +17,7 @@ type BaseTournament = {
     readonly serie_id: number;
     readonly slug: string;
     readonly winner_id: number | null;
+    readonly winner_type: PlayerType;
 }
 
 type Tournament = BaseTournament & {

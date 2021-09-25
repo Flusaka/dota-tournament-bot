@@ -38,7 +38,7 @@ enum MatchStatus {
 
 type BaseMatch = {
     /** When the entire match is due to start */
-    readonly begin_at: string | null;
+    readonly begin_at: Date | null;
 
     /** Whether the match offers full stats */
     readonly detailed_stats: boolean;

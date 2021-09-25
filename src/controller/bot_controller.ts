@@ -1,16 +1,14 @@
-import { IDotaBot } from "../interfaces/discord/bot";
-import { DailyMatchesMessage, Match } from "../interfaces/discord/messages";
-import { IMatchesAPI } from "../interfaces/matches/api";
-import { ITournamentsAPI } from "../interfaces/tournaments/api";
+import { IDotaBot } from "../interfaces/bot";
+import { DailyMatchesMessage, Match } from "../interfaces/messages";
+import { IMatchesAPI } from "../pandascore/interfaces/matches/api";
+import fs from 'fs';
 
 class BotController {
     private bot: IDotaBot;
-    private tournamentsApi: ITournamentsAPI;
     private matchesApi: IMatchesAPI;
 
-    constructor(bot: IDotaBot, tournamentsApi: ITournamentsAPI, matchesApi: IMatchesAPI) {
+    constructor(bot: IDotaBot, matchesApi: IMatchesAPI) {
         this.bot = bot;
-        this.tournamentsApi = tournamentsApi;
         this.matchesApi = matchesApi;
     }
 
@@ -42,45 +40,47 @@ class BotController {
         // });
 
         this.bot.initialise(async () => {
-            let upcomingMatches = await this.matchesApi.getPastMatches({
+            let upcomingMatches = await this.matchesApi.getUpcomingMatches({
                 sort: '-scheduled_at'
             });
-            upcomingMatches = upcomingMatches.filter(match => (match.serie.tier == 'b' || match.serie.tier == 'a'))
+
+            upcomingMatches = upcomingMatches.filter(match => (match.serie.tier == 'c' || match.serie.tier == 'b' || match.serie.tier == 'a'))
                 .sort((a, b) => a.tournament_id - b.tournament_id);
 
-            while (upcomingMatches.length > 0) {
-                const firstMatch = upcomingMatches[0];
-                const matchesInTournament = upcomingMatches.filter(match => match.tournament_id == firstMatch.tournament_id);
-                upcomingMatches.splice(0, matchesInTournament.length);
 
-                this.bot.postDailyMatches({
-                    tournamentName: `${firstMatch.league.name} - ${firstMatch.tournament.name}`,
-                    matches: matchesInTournament.map(match => {
-                        let streamLink = "";
-                        if (match.streams_list.length > 0) {
-                            const official = match.streams_list.filter(stream => stream.official);
-                            if (official.length > 0) {
-                                streamLink = official[0].raw_url;
-                            }
-                            else {
-                                const main = match.streams_list.filter(stream => stream.main);
-                                if (main.length > 0) {
-                                    streamLink = main[0].raw_url;
-                                }
-                                else {
-                                    streamLink = match.streams_list[0].raw_url;
-                                }
-                            }
-                        }
-                        return {
-                            startTime: new Date(Date.parse(match.begin_at)),
-                            matchTitle: match.name,
-                            streamLink: streamLink
-                        };
-                    })
-                });
-                // console.log(`Removing ${matchesInTournament.length} matches. ${upcomingMatches.length} remaining!`);
-            }
+            // while (upcomingMatches.length > 0) {
+            //     const firstMatch = upcomingMatches[0];
+            //     const matchesInTournament = upcomingMatches.filter(match => match.tournament_id == firstMatch.tournament_id);
+            //     upcomingMatches.splice(0, matchesInTournament.length);
+
+            //     this.bot.postDailyMatches({
+            //         tournamentName: `${firstMatch.league.name} - ${firstMatch.tournament.name}`,
+            //         matches: matchesInTournament.map(match => {
+            //             let streamLink = "";
+            //             if (match.streams_list.length > 0) {
+            //                 const official = match.streams_list.filter(stream => stream.official);
+            //                 if (official.length > 0) {
+            //                     streamLink = official[0].raw_url;
+            //                 }
+            //                 else {
+            //                     const main = match.streams_list.filter(stream => stream.main);
+            //                     if (main.length > 0) {
+            //                         streamLink = main[0].raw_url;
+            //                     }
+            //                     else {
+            //                         streamLink = match.streams_list[0].raw_url;
+            //                     }
+            //                 }
+            //             }
+            //             return {
+            //                 startTime: new Date(Date.parse(match.begin_at)),
+            //                 matchTitle: match.name,
+            //                 streamLink: streamLink
+            //             };
+            //         })
+            //     });
+            //     // console.log(`Removing ${matchesInTournament.length} matches. ${upcomingMatches.length} remaining!`);
+            // }
         });
     }
 }

@@ -1,5 +1,5 @@
-import { IDotaBot } from "../interfaces/discord/bot";
-import { DailyMatchesMessage } from '../interfaces/discord/messages';
+import { IDotaBot } from "../interfaces/bot";
+import { DailyMatchesMessage } from '../interfaces/messages';
 import Discord, { TextChannel } from 'discord.js';
 
 class DotaBot implements IDotaBot {

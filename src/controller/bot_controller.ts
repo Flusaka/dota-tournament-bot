@@ -1,5 +1,5 @@
 import { IDotaBot } from "../interfaces/bot";
-import { DailyMatchesMessage, Match } from "../interfaces/messages";
+import { DailyMatchesMessage, MatchDetails } from "../interfaces/messages";
 import { IMatchesAPI } from "../pandascore/interfaces/matches/api";
 import fs from 'fs';
 import { ITournamentsAPI } from "../pandascore/interfaces/tournaments/api";
@@ -47,12 +47,34 @@ class BotController {
                 sort: '-begin_at'
             });
 
+            // TODO: Split matches within tournament based on stream location
+            const tournamentMessages: DailyMatchesMessage[] = upcomingTournaments.map((tournament) => {
+                return {
+                    tournamentName: tournament.league.name,
+                    matches: tournament.matches.map((match) => {
+                        let stream = match.streams_list.find(stream => stream.language === "en" || stream.official || stream.main);
+                        if (stream === null) {
+                            stream = match.streams_list[0];
+                        }
+
+                        return {
+                            matchId: match.id,
+                            matchTitle: match.name,
+                            streamLink: stream.raw_url,
+                            startTime: match.begin_at
+                        }
+                    })
+                };
+            });
+
+            this.bot.postDailyMatches(tournamentMessages);
+
             // console.log(upcomingTournaments[0].begin_at);
             // console.log(upcomingTournaments[0].end_at);
 
-            upcomingTournaments[0].matches.forEach((match) => {
-                console.log(`${match.name} - ${match.begin_at} to ${match.end_at}`);
-            });
+            // upcomingTournaments[0].matches.forEach((match) => {
+            //     console.log(`${match.name} - ${match.begin_at} to ${match.end_at}`);
+            // });
 
             // upcomingTournaments = upcomingTournaments.filter(tournament => (tournament.serie.tier == 'b' || tournament.serie.tier == 'a'));
             // fs.writeFileSync("tournaments.json", JSON.stringify(upcomingTournaments, null, 2));

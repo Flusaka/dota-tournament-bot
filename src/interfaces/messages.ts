@@ -1,4 +1,6 @@
-type Match = {
+type MatchDetails = {
+    readonly matchId: number;
+
     // Match title (e.g. OG vs Nigma)
     readonly matchTitle: string;
 
@@ -11,10 +13,10 @@ type Match = {
 
 type DailyMatchesMessage = {
     readonly tournamentName: string;
-    readonly matches: Match[];
+    readonly matches: MatchDetails[];
 }
 
 export {
     DailyMatchesMessage,
-    Match
+    MatchDetails
 };

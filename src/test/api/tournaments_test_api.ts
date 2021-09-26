@@ -1,8 +1,8 @@
-import { ITournamentsAPI } from '../pandascore/interfaces/tournaments/api';
-import { PastTournamentsRequest, RunningTournamentsRequest, UpcomingTournamentsRequest } from '../pandascore/interfaces/tournaments/requests';
-import { PastTournamentsResponse, RunningTournamentsResponse, UpcomingTournamentsResponse } from '../pandascore/interfaces/tournaments/responses';
+import { ITournamentsAPI } from '../../pandascore/interfaces/tournaments/api';
+import { PastTournamentsRequest, RunningTournamentsRequest, UpcomingTournamentsRequest } from '../../pandascore/interfaces/tournaments/requests';
+import { PastTournamentsResponse, RunningTournamentsResponse, UpcomingTournamentsResponse } from '../../pandascore/interfaces/tournaments/responses';
 import fs from 'fs';
-import { Tournament } from '../pandascore/interfaces/tournaments/types';
+import { Tournament } from '../../pandascore/interfaces/tournaments/types';
 
 class TournamentsTestAPI implements ITournamentsAPI {
     getUpcomingTournaments = async (request: UpcomingTournamentsRequest): Promise<UpcomingTournamentsResponse> => {

@@ -1,6 +1,6 @@
-import { IMatchesAPI } from "../pandascore/interfaces/matches/api";
-import { PastMatchesRequest, RunningMatchesRequest, UpcomingMatchesRequest } from "../pandascore/interfaces/matches/requests";
-import { PastMatchesResponse, RunningMatchesResponse, UpcomingMatchesResponse } from "../pandascore/interfaces/matches/responses";
+import { IMatchesAPI } from "../../pandascore/interfaces/matches/api";
+import { PastMatchesRequest, RunningMatchesRequest, UpcomingMatchesRequest } from "../../pandascore/interfaces/matches/requests";
+import { PastMatchesResponse, RunningMatchesResponse, UpcomingMatchesResponse } from "../../pandascore/interfaces/matches/responses";
 import fs from 'fs';
 
 class MatchesTestAPI implements IMatchesAPI {

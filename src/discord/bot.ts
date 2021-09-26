@@ -36,10 +36,10 @@ class DotaBot implements IDotaBot {
             return `[${match.matchId}] ${startTime} - ${match.matchTitle}`;
         }).join('\n');
 
-        // channel.send(`${message.tournamentName} matches today!\n` +
-        //     `Games on ${message.matches[0].streamLink}:\n` +
-        //     `${matchesText}`
-        // );
+        channel.send(`${message.tournamentName} matches today!\n` +
+            `Games on ${message.matches[0].streamLink}:\n` +
+            `${matchesText}`
+        );
 
         console.log(`${message.tournamentName} matches today!\n` +
             `Games on ${message.matches[0].streamLink}:\n` +

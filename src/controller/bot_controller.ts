@@ -3,7 +3,7 @@ import { DailyMatchesMessage, MatchDetails } from "../interfaces/messages";
 import { IMatchesAPI } from "../pandascore/interfaces/matches/api";
 import fs from 'fs';
 import { ITournamentsAPI } from "../pandascore/interfaces/tournaments/api";
-import { Command, CommandProcessor } from "../discord/command_processor";
+import { Command, CommandProcessor } from "./command_processor";
 
 class BotController {
     private bot: IDotaBot;
@@ -20,6 +20,7 @@ class BotController {
         this.commandProcessor = new CommandProcessor();
         this.commandProcessor.registerCallback(Command.EnableBotInChannel, this.enableBot);
         this.commandProcessor.registerCallback(Command.DisableBotInChannel, this.disableBot);
+        // this.commandProcessor.registerCallback
     }
 
     initialise = async () => {
@@ -28,12 +29,13 @@ class BotController {
         });
     }
 
-    enableBot = () => {
-        console.log("enable bot");
+    enableBot = (userId: string, channelId: string, parameters: string[]) => {
+        // TODO: Register channel with 
+        console.log(`enable bot: ${userId} ${channelId}`);
     }
 
-    disableBot = () => {
-        console.log("disable bot");
+    disableBot = (userId: string, channelId: string, parameters: string[]) => {
+        console.log(`disable bot: ${userId} ${channelId}`);
     }
 }
 

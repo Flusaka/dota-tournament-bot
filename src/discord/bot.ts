@@ -46,11 +46,6 @@ class DotaBot implements IDotaBot {
             `Games on ${message.matches[0].streamLink}:\n` +
             `${matchesText}`
         );
-
-        console.log(`${message.tournamentName} matches today!\n` +
-            `Games on ${message.matches[0].streamLink}:\n` +
-            `${matchesText}`
-        );
     }
 
     messageReceived = (message: Discord.Message) => {
@@ -58,8 +53,8 @@ class DotaBot implements IDotaBot {
             return;
         }
 
-        if (this.commandProcessor.shouldProcess(message.content)) {
-            this.commandProcessor.processCommand(message.content);
+        if (this.commandProcessor.shouldProcess(message)) {
+            this.commandProcessor.processCommand(message);
         }
     }
 }

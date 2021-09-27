@@ -1,6 +1,8 @@
+import { Message } from 'discord.js';
+
 interface ICommandProcessor {
-    shouldProcess: (message: string) => boolean;
-    processCommand: (message: string) => void;
+    shouldProcess: (message: Message) => boolean;
+    processCommand: (message: Message) => void;
 }
 
 export { ICommandProcessor };

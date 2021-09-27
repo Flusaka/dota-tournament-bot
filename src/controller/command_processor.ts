@@ -1,6 +1,7 @@
 import { ICommandProcessor } from "../interfaces/command_processor";
+import { Message } from 'discord.js';
 
-type ProcessorCallback = (parameters: string[]) => void;
+type ProcessorCallback = (authorId: string, channelId: string, parameters: string[]) => void;
 
 enum Command {
     Invalid = "invalid",
@@ -32,12 +33,12 @@ class CommandProcessor implements ICommandProcessor {
         this.commandCallbacks.set(command, options);
     }
 
-    shouldProcess = (message: string): boolean => {
-        if (!message.startsWith("!dotabot")) {
+    shouldProcess = (message: Message): boolean => {
+        if (!message.content.startsWith("!dotabot")) {
             return false;
         }
 
-        const parts = message.split(" ");
+        const parts = message.content.split(" ");
         if (parts.length <= 1) {
             return false;
         }
@@ -45,8 +46,8 @@ class CommandProcessor implements ICommandProcessor {
         return true;
     }
 
-    processCommand = (message: string): void => {
-        const splitMessage = message.split(" ");
+    processCommand = (message: Message): void => {
+        const splitMessage = message.content.split(" ");
 
         // [1] is the actual command
         const commandString = splitMessage[1];
@@ -81,7 +82,7 @@ class CommandProcessor implements ICommandProcessor {
             parameters = splitMessage.slice(2);
         }
 
-        commandDef.callback(parameters);
+        commandDef.callback(message.author.id, message.channel.id, parameters);
     }
 
     getCommandEnum = (commandString: string): Command => {

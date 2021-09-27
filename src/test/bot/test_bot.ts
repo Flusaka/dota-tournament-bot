@@ -1,8 +1,12 @@
 import { IDotaBot } from "../../interfaces/bot";
+import { ICommandProcessor } from "../../interfaces/command_processor";
 import { DailyMatchesMessage } from '../../interfaces/messages';
 
 class TestDotaBot implements IDotaBot {
-    initialise = (readyCallback: () => void) => {
+    private commandProcessor: ICommandProcessor;
+
+    initialise = (commandProcessor: ICommandProcessor, readyCallback: () => void) => {
+        this.commandProcessor = commandProcessor;
         readyCallback();
     }
 

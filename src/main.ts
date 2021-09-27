@@ -24,5 +24,5 @@ import MatchesTestAPI from './test/api/matches_test_api';
 import TournamentsTestAPI from './test/api/tournaments_test_api';
 import TestDotaBot from './test/bot/test_bot';
 
-const botController = new BotController(new TestDotaBot(), new MatchesTestAPI(), new TournamentsTestAPI());
+const botController = new BotController(new DotaBot(), new MatchesTestAPI(), new TournamentsTestAPI());
 botController.initialise();

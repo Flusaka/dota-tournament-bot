@@ -1,18 +1,24 @@
 import { IDotaBot } from "../interfaces/bot";
 import { DailyMatchesMessage } from '../interfaces/messages';
 import Discord, { TextChannel } from 'discord.js';
+import { ICommandProcessor } from "../interfaces/command_processor";
 
 class DotaBot implements IDotaBot {
     private client: Discord.Client;
+    private commandProcessor: ICommandProcessor;
 
-    initialise = (readyCallback: () => void) => {
+    initialise = (processor: ICommandProcessor, readyCallback: () => void) => {
+        this.commandProcessor = processor;
         this.client = new Discord.Client();
+
         // TODO: Move into env variable
         this.client.login('ODYyMzMyNzY3MDIyNjEyNTIx.YOWz-Q.fvj0mW-pFY3349Qe8A9YRrKZfIw');
 
         this.client.on('ready', () => {
             readyCallback();
         });
+
+        this.client.on('message', this.messageReceived);
     }
 
     postDailyMatches = async (messages: DailyMatchesMessage[]) => {
@@ -45,6 +51,16 @@ class DotaBot implements IDotaBot {
             `Games on ${message.matches[0].streamLink}:\n` +
             `${matchesText}`
         );
+    }
+
+    messageReceived = (message: Discord.Message) => {
+        if (message.author.bot) {
+            return;
+        }
+
+        if (this.commandProcessor.shouldProcess(message.content)) {
+            this.commandProcessor.processCommand(message.content);
+        }
     }
 }
 

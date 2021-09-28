@@ -1,12 +1,12 @@
-import { ICommandProcessor } from "../interfaces/command_processor";
 import { Message } from 'discord.js';
 
-type ProcessorCallback = (authorId: string, channelId: string, parameters: string[]) => void;
+type ProcessorCallback = (message: Message, parameters: string[]) => void;
 
 enum Command {
     Invalid = "invalid",
     EnableBotInChannel = "start",
     DisableBotInChannel = "stop",
+    Notify = "notify"
 }
 
 type CommandOptions = {
@@ -14,7 +14,7 @@ type CommandOptions = {
     numParameters: number;
 }
 
-class CommandProcessor implements ICommandProcessor {
+class CommandProcessor {
     private commandCallbacks: Map<Command, CommandOptions>;
 
 
@@ -82,7 +82,7 @@ class CommandProcessor implements ICommandProcessor {
             parameters = splitMessage.slice(2);
         }
 
-        commandDef.callback(message.author.id, message.channel.id, parameters);
+        commandDef.callback(message, parameters);
     }
 
     getCommandEnum = (commandString: string): Command => {

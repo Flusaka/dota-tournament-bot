@@ -17,12 +17,6 @@
 // });
 
 import BotController from './controller/bot_controller';
-import DotaBot from './discord/bot';
-import MatchesAPI from './pandascore/api/matches_api';
-import TournamentsAPI from './pandascore/api/tournaments_api';
-import MatchesTestAPI from './test/api/matches_test_api';
-import TournamentsTestAPI from './test/api/tournaments_test_api';
-import TestDotaBot from './test/bot/test_bot';
 
-const botController = new BotController(new DotaBot(), new MatchesTestAPI(), new TournamentsTestAPI());
+const botController = new BotController();
 botController.initialise();

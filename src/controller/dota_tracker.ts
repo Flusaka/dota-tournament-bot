@@ -7,6 +7,8 @@ type TimerRef = ReturnType<typeof setTimeout>;
 class DotaTracker {
     private channel: TextChannel;
 
+    private dailyNotificationTime: Date;
+
     private matchesApi: IMatchesAPI;
 
     private tournamentsApi: ITournamentsAPI;
@@ -18,6 +20,12 @@ class DotaTracker {
         this.matchesApi = matchesApi;
         this.tournamentsApi = tournamentsApi;
         this.notifications = new Map<string, TimerRef>();
+    }
+
+    setDailyNotificationTime = (dateTime: Date) => {
+        if (dateTime.getUTCDate() < Date.now()) {
+
+        }
     }
 
     registerNotification = (user: User, timeout: number) => {

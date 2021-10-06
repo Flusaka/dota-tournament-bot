@@ -6,6 +6,7 @@ enum Command {
     Invalid = "invalid",
     EnableBotInChannel = "start",
     DisableBotInChannel = "stop",
+    SetDailyTime = "daily",
     Notify = "notify"
 }
 

@@ -18,7 +18,6 @@ type CommandOptions = {
 class CommandProcessor {
     private commandCallbacks: Map<Command, CommandOptions>;
 
-
     constructor() {
         this.commandCallbacks = new Map<Command, CommandOptions>();
     }

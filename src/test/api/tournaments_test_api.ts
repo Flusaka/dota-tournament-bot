@@ -18,8 +18,8 @@ class TournamentsTestAPI implements ITournamentsAPI {
                 const fakeEnd = fakeStart + (5 * 1000 * 60);
                 return {
                     ...match,
-                    begin_at: new Date(Date.now() + fakeStart),
-                    end_at: new Date(Date.now() + fakeEnd)
+                    // begin_at: new Date(Date.now() + fakeStart),
+                    // end_at: new Date(Date.now() + fakeEnd)
                 };
             })
         }

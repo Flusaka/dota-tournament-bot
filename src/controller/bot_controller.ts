@@ -1,13 +1,12 @@
 import Discord, { Message, TextChannel } from 'discord.js';
-import { DailyMatchesMessage, MatchDetails } from "../interfaces/messages";
 import { Command, CommandProcessor } from "./command_processor";
 import { DotaTracker } from './dota_tracker';
-import MatchesAPI from '../pandascore/api/matches_api';
-import TournamentsAPI from '../pandascore/api/tournaments_api';
 import MatchesTestAPI from '../test/api/matches_test_api';
 import { IMatchesAPI } from '../pandascore/interfaces/matches/api';
 import { ITournamentsAPI } from '../pandascore/interfaces/tournaments/api';
 import TournamentsTestAPI from '../test/api/tournaments_test_api';
+import MatchesAPI from '../pandascore/api/matches_api';
+import TournamentsAPI from '../pandascore/api/tournaments_api';
 
 
 class BotController {
@@ -29,14 +28,15 @@ class BotController {
         this.commandProcessor = new CommandProcessor();
         this.commandProcessor.registerCallback(Command.EnableBotInChannel, this.enableBot);
         this.commandProcessor.registerCallback(Command.DisableBotInChannel, this.disableBot);
-        this.commandProcessor.registerCallback(Command.Notify, this.notifyUser);
+        this.commandProcessor.registerCallback(Command.SetDailyTime, this.setDailyTime, 1);
+        // this.commandProcessor.registerCallback(Command.Notify, this.notifyUser);
 
         // Dota trackers map
         this.dotaTrackers = new Map<string, DotaTracker>();
 
         // API handlers
-        this.matchesApi = new MatchesTestAPI();
-        this.tournamentsApi = new TournamentsTestAPI();
+        this.matchesApi = new MatchesAPI();
+        this.tournamentsApi = new TournamentsAPI();
 
         // TODO: Move into env variable
         this.client.login('ODYyMzMyNzY3MDIyNjEyNTIx.YOWz-Q.fvj0mW-pFY3349Qe8A9YRrKZfIw');
@@ -75,10 +75,49 @@ class BotController {
         this.dotaTrackers.delete(message.channel.id);
     }
 
-    notifyUser = (message: Message, parameters: string[]) => {
-        if (this.dotaTrackers.has(message.channel.id)) {
-            this.dotaTrackers.get(message.channel.id).registerNotification(message.author, 5);
+    setDailyTime = (message: Message, parameters: string[]) => {
+        function parseTime(timeString: string): Date {	
+            if (timeString == '') return null;
+            
+            var time = timeString.match(/(\d+)(:(\d\d))?\s*(p?)/i);	
+            if (time == null) return null;
+            
+            var hours = parseInt(time[1],10);	 
+            if (hours == 12 && !time[4]) {
+                hours = 0;
+            }
+            else {
+                hours += (hours < 12 && time[4])? 12 : 0;
+            }	
+            var d = new Date();    	    	
+            d.setHours(hours);
+            d.setMinutes(parseInt(time[3],10) || 0);
+            d.setSeconds(0, 0);	 
+            return d;
         }
+
+        this.getDotaTrackerForChannel(message.channel.id, (exists, tracker) => {
+            if(!exists) {
+                message.channel.send("You need to enable the bot on this channel! Please type \"!dotabot start\" first!")
+            }
+            else {
+                // Parse time
+                const dailyTime = parseTime(parameters[0]);
+                tracker.setDailyNotificationTime(dailyTime);
+            }
+        });
+    }
+
+    notifyUser = (message: Message, parameters: string[]) => {
+    }
+
+    getDotaTrackerForChannel = (channelId: string, callback: (exists: boolean, tracker: DotaTracker) => void) => {
+        if(this.dotaTrackers.has(channelId)) {
+            callback(true, this.dotaTrackers.get(channelId));
+            return;
+        }
+
+        callback(false, null);
     }
 }
 

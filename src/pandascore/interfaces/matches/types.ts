@@ -38,25 +38,25 @@ enum MatchStatus {
 
 type BaseMatch = {
     /** When the entire match is due to start */
-    readonly begin_at: Date | null;
+    readonly begin_at: string | null;
 
     /** Whether the match offers full stats */
     readonly detailed_stats: boolean;
     readonly draw: boolean;
-    readonly end_at: Date | null;
+    readonly end_at: string | null;
     readonly forfeit: boolean;
     readonly game_advantage: number | null;
     readonly id: number;
     // TODO: Could add "live" property here...
     readonly live_embed_url: string | null;
     readonly match_type: MatchType;
-    readonly modified_at: Date | null;
+    readonly modified_at: string | null;
     readonly name: string;
     readonly number_of_games: number;
     readonly official_stream_url: string | null;
-    readonly original_scheduled_at: Date | null;
+    readonly original_scheduled_at: string | null;
     readonly rescheduled: boolean;
-    readonly scheduled_at: Date | null;
+    readonly scheduled_at: string | null;
     readonly slug: string;
     readonly status: MatchStatus;
     // TODO: Add "streams" object?

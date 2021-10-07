@@ -51,27 +51,49 @@ class DotaTracker {
     }
 
     postDailyNotification = () => {
-        // Post message
-        // TODO: Get the list of matches for today...
-        this.tournamentsApi.getUpcomingTournaments({
-            sort: 'begin_at'
+        // Get the list of running tournaments
+        this.tournamentsApi.getRunningTournaments({
+            sort: '-end_at'
         }).then((upcomingTournaments) => {
+            const beginningOfDay = new Date();
+            beginningOfDay.setHours(0, 0, 0);
+
             const endOfDay = new Date();
             endOfDay.setHours(23, 59, 59);
+
             const filteredTournaments = upcomingTournaments
-                .filter(tournament => tournament.serie.tier == 'a' || tournament.serie.tier == 's');
+                .filter(tournament => tournament.serie.tier == 'a' || tournament.serie.tier == 's')
+                .filter(tournament => new Date(tournament.end_at) >= beginningOfDay);
 
             const tournamentMessages: DailyMatchesMessage[] = filteredTournaments.map((tournament) => {
                 const filteredMatches = tournament.matches.filter(match => {
-                    return new Date(match.begin_at) <= endOfDay;
+                    return new Date(match.begin_at) <= endOfDay && (match.end_at === null || new Date(match.end_at) >= beginningOfDay);
                 });
 
                 return {
                     tournamentName: `${tournament.league.name} - ${tournament.name}`,
                     matches: filteredMatches.map((match) => {
-                        let stream = match.streams_list.find(stream => stream.language === "en" || stream.official || stream.main);
+                        // Try and get the first official, main and english stream
+                        let stream = match.streams_list.find(stream => stream.language === "en" && stream.official && stream.main);
+                        console.log(match.streams_list);
                         if (stream === null) {
-                            stream = match.streams_list[0];
+                            // If no stream can be found, find the first official && main stream
+                            stream = match.streams_list.find(stream => stream.official && stream.main);
+
+                            if(stream === null) {
+                                // If no stream can be found still, find the first official stream
+                                stream = match.streams_list.find(stream => stream.official);
+
+                                if(stream === null) {
+                                    // If _STILL_ no stream can be found, get the first english stream...
+                                    stream = match.streams_list.find(stream => stream.language === "en");
+
+                                    if(stream === null) {
+                                        // If it's STILL STILL null, just accept the first one...
+                                        stream = match.streams_list[0];
+                                    }
+                                }
+                            }
                         }
 
                         return {
@@ -92,8 +114,8 @@ class DotaTracker {
         }).finally(() => {
             // Setup next notification time to a day in the future
             const nextNotificationTime = new Date(this.dailyNotificationTime.getTime());
-            nextNotificationTime.setMinutes(nextNotificationTime.getMinutes() + 1);
-            // nextNotificationTime.setDate(nextNotificationTime.getDate() + 1);
+            // nextNotificationTime.setMinutes(nextNotificationTime.getMinutes() + 1);
+            nextNotificationTime.setDate(nextNotificationTime.getDate() + 1);
             this.setDailyNotificationTime(nextNotificationTime);
         });
     }

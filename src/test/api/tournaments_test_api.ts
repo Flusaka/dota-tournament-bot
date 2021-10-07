@@ -11,8 +11,8 @@ class TournamentsTestAPI implements ITournamentsAPI {
         const response: UpcomingTournamentsResponse = JSON.parse(json);
         const altered: Tournament = {
             ...response[0],
-            begin_at: new Date(Date.now()),
-            end_at: new Date(Date.now() + 5 * 1000 * 60),
+            // begin_at: new Date(Date.now()),
+            // end_at: new Date(Date.now() + 5 * 1000 * 60),
             matches: response[0].matches.map((match, index) => {
                 const fakeStart = index * 5 * 1000 * 60;
                 const fakeEnd = fakeStart + (5 * 1000 * 60);

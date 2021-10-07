@@ -4,7 +4,9 @@
   "description": "A Dota eSports match and stream notification bot for Discord",
   "main": "dist/main.js",
   "scripts": {
-    "start": "tsc && node dist/main.js",
+    "start": "node dist/main.js",
+    "start-local": "tsc && node dist/main.js",
+    "postinstall": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Neil Armitage",

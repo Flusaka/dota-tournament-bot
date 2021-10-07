@@ -1,5 +1,5 @@
-import { Message, TextChannel } from 'discord.js';
-import { DailyMatchesMessage, MatchDetails } from '../interfaces/messages';
+import { TextChannel } from 'discord.js';
+import { DailyMatchesMessage, MatchDetails } from './messages';
 
 class MessageSender {
     private channel: TextChannel;
@@ -13,7 +13,7 @@ class MessageSender {
     }
 
     postDailyMatch = async (message: DailyMatchesMessage) => {
-        if(message.matches.length === 0) {
+        if (message.matches.length === 0) {
             return;
         }
 
@@ -25,9 +25,9 @@ class MessageSender {
         });
 
         const organisedMatches: Array<MatchDetails[]> = [];
-        while(message.matches.length > 0) {
+        while (message.matches.length > 0) {
             const streamLink = message.matches[0].streamLink;
-            const matchesOnStream = message.matches.filter(match => match.streamLink == streamLink);            
+            const matchesOnStream = message.matches.filter(match => match.streamLink == streamLink);
             organisedMatches.push(matchesOnStream);
             matchesOnStream.forEach((match) => {
                 message.matches.splice(message.matches.indexOf(match), 1);

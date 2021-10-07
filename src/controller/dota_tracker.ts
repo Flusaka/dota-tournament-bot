@@ -1,8 +1,8 @@
 import { IMatchesAPI } from "../pandascore/interfaces/matches/api";
 import { ITournamentsAPI } from "../pandascore/interfaces/tournaments/api";
 import MessageSender from "./message_sender";
-import { TextChannel, User } from 'discord.js';
-import { DailyMatchesMessage } from "../interfaces/messages";
+import { TextChannel } from 'discord.js';
+import { DailyMatchesMessage } from "./messages";
 
 type TimerRef = ReturnType<typeof setTimeout>;
 
@@ -40,7 +40,7 @@ class DotaTracker {
 
         console.log(`Setting daily notification time to ${this.dailyNotificationTime.toString()}`)
 
-        if(this.dailyNotificationRef !== null) {
+        if (this.dailyNotificationRef !== null) {
             console.log("Clearing existing notification timeout");
             clearTimeout(this.dailyNotificationRef);
             this.dailyNotificationRef = null;
@@ -83,8 +83,8 @@ class DotaTracker {
                     })
                 };
             });
-            
-            if(tournamentMessages.length > 0) {
+
+            if (tournamentMessages.length > 0) {
                 this.messageSender.postDailyMatches(tournamentMessages);
             }
         }).catch((error) => {

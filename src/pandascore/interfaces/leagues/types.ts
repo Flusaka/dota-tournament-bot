@@ -4,7 +4,7 @@ import { VideoGame } from "../videogames/types";
 type BaseLeague = {
     readonly id: number;
     readonly image_url: string | null;
-    readonly modified_at: Date | null;
+    readonly modified_at: string | null;
     readonly name: string;
     readonly slug: string;
     readonly url: string | null;

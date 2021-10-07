@@ -6,12 +6,12 @@ import { PlayerType } from '../common/player_type';
 import { VideoGame, VideoGameVersion } from '../videogames/types';
 
 type BaseTournament = {
-    readonly begin_at: Date | null;
-    readonly end_at: Date | null;
+    readonly begin_at: string | null;
+    readonly end_at: string | null;
     readonly id: number;
     readonly league_id: number;
     readonly live_supported: boolean;
-    readonly modified_at: Date | null;
+    readonly modified_at: string | null;
     readonly name: string;
     readonly prizepool: string | null;
     readonly serie_id: number;

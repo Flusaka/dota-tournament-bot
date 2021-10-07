@@ -15,7 +15,7 @@ type GameWinner = {
 
 type Game = {
     /** When this game is due to start */
-    readonly begin_at: Date | null;
+    readonly begin_at: string | null;
 
     /** Whether game data is complete and won't change */
     readonly complete: boolean;
@@ -24,7 +24,7 @@ type Game = {
     readonly detailed_stats: boolean;
 
     /** When the game is due to end */
-    readonly end_at: Date | null;
+    readonly end_at: string | null;
 
     /** Whether the game is finished */
     readonly finished: boolean;

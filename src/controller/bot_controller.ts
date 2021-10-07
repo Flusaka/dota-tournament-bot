@@ -62,6 +62,7 @@ class BotController {
 
     enableBot = (message: Message, parameters: string[]) => {
         console.log(`enable bot: ${message.channel.id}`);
+        message.channel.send(":robot: Dota Bot enabled!");
 
         if (!this.dotaTrackers.has(message.channel.id)) {
             this.dotaTrackers.set(message.channel.id, new DotaTracker(message.channel as TextChannel, this.matchesApi, this.tournamentsApi));
@@ -70,9 +71,14 @@ class BotController {
 
     disableBot = (message: Message, parameters: string[]) => {
         console.log(`disable bot: ${message.channel.id}`);
+        message.channel.send(":robot: Dota Bot disabled!");
 
-        // TODO: Clear out any existing timeouts etc. properly shutdown the tracker
-        this.dotaTrackers.delete(message.channel.id);
+        this.getDotaTrackerForChannel(message.channel.id, (exists, tracker) => {
+            if(exists) {
+                tracker.shutdown();
+                this.dotaTrackers.delete(message.channel.id);
+            }
+        });
     }
 
     setDailyTime = (message: Message, parameters: string[]) => {
@@ -103,6 +109,7 @@ class BotController {
             else {
                 // Parse time
                 const dailyTime = parseTime(parameters[0]);
+                message.channel.send(`:robot: Daily notifications of games will occur at: ${dailyTime.toTimeString()}`)
                 tracker.setDailyNotificationTime(dailyTime);
             }
         });

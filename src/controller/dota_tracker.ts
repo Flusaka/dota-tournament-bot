@@ -28,6 +28,13 @@ class DotaTracker {
         this.dailyNotificationRef = null;
     }
 
+    shutdown = () => {
+        // Clear any timeout refs
+        if(this.dailyNotificationRef !== null) {
+            clearTimeout(this.dailyNotificationRef);
+        }
+    }
+
     setDailyNotificationTime = (dateTime: Date) => {
         // TODO: Cancel existing notification if there is one...
         this.dailyNotificationTime = new Date(dateTime.getTime());
@@ -75,7 +82,6 @@ class DotaTracker {
                     matches: filteredMatches.map((match) => {
                         // Try and get the first official, main and english stream
                         let stream = match.streams_list.find(stream => stream.language === "en" && stream.official && stream.main);
-                        console.log(match.streams_list);
                         if (stream === null) {
                             // If no stream can be found, find the first official && main stream
                             stream = match.streams_list.find(stream => stream.official && stream.main);

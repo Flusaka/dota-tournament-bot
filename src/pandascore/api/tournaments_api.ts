@@ -11,7 +11,7 @@ class TournamentsAPI implements ITournamentsAPI {
         headers: {
             common: {
                 // TODO: Move into env variable
-                Authorization: 'Bearer 8FG9WnjcQBp9FkS8PA6bTQAEKYQefsBhWBjOG_hC7VYu4vWLxNM'
+                Authorization: `Bearer ${process.env.PS_TOKEN}`
             }
         },
         responseType: 'json'

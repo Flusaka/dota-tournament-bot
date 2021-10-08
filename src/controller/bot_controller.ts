@@ -39,7 +39,7 @@ class BotController {
         this.tournamentsApi = new TournamentsAPI();
 
         // TODO: Move into env variable
-        this.client.login('ODYyMzMyNzY3MDIyNjEyNTIx.YOWz-Q.fvj0mW-pFY3349Qe8A9YRrKZfIw');
+        this.client.login(process.env.DISCORD_TOKEN);
     }
 
     initialise = async () => {
@@ -74,7 +74,7 @@ class BotController {
         message.channel.send(":robot: Dota Bot disabled!");
 
         this.getDotaTrackerForChannel(message.channel.id, (exists, tracker) => {
-            if(exists) {
+            if (exists) {
                 tracker.shutdown();
                 this.dotaTrackers.delete(message.channel.id);
             }
@@ -82,28 +82,28 @@ class BotController {
     }
 
     setDailyTime = (message: Message, parameters: string[]) => {
-        function parseTime(timeString: string): Date {	
+        function parseTime(timeString: string): Date {
             if (timeString == '') return null;
-            
-            var time = timeString.match(/(\d+)(:(\d\d))?\s*(p?)/i);	
+
+            var time = timeString.match(/(\d+)(:(\d\d))?\s*(p?)/i);
             if (time == null) return null;
-            
-            var hours = parseInt(time[1],10);	 
+
+            var hours = parseInt(time[1], 10);
             if (hours == 12 && !time[4]) {
                 hours = 0;
             }
             else {
-                hours += (hours < 12 && time[4])? 12 : 0;
-            }	
-            var d = new Date();    	    	
+                hours += (hours < 12 && time[4]) ? 12 : 0;
+            }
+            var d = new Date();
             d.setHours(hours);
-            d.setMinutes(parseInt(time[3],10) || 0);
-            d.setSeconds(0, 0);	 
+            d.setMinutes(parseInt(time[3], 10) || 0);
+            d.setSeconds(0, 0);
             return d;
         }
 
         this.getDotaTrackerForChannel(message.channel.id, (exists, tracker) => {
-            if(!exists) {
+            if (!exists) {
                 message.channel.send("You need to enable the bot on this channel! Please type \"!dotabot start\" first!")
             }
             else {
@@ -119,7 +119,7 @@ class BotController {
     }
 
     getDotaTrackerForChannel = (channelId: string, callback: (exists: boolean, tracker: DotaTracker) => void) => {
-        if(this.dotaTrackers.has(channelId)) {
+        if (this.dotaTrackers.has(channelId)) {
             callback(true, this.dotaTrackers.get(channelId));
             return;
         }

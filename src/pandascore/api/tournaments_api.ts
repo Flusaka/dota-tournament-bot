@@ -2,15 +2,12 @@ import axios from 'axios';
 import { ITournamentsAPI } from '../interfaces/tournaments/api';
 import { PastTournamentsRequest, RunningTournamentsRequest, UpcomingTournamentsRequest } from '../interfaces/tournaments/requests';
 import { PastTournamentsResponse, RunningTournamentsResponse, UpcomingTournamentsResponse } from '../interfaces/tournaments/responses';
-// import { PastMatchesRequest, RunningMatchesRequest, UpcomingMatchesRequest } from "../interfaces/matches/requests";
-// import { PastMatchesResponse, RunningMatchesResponse, UpcomingMatchesResponse } from "../interfaces/matches/responses";
 
 class TournamentsAPI implements ITournamentsAPI {
     private readonly axiosInstance = axios.create({
         baseURL: 'https://api.pandascore.co/dota2/tournaments',
         headers: {
             common: {
-                // TODO: Move into env variable
                 Authorization: `Bearer ${process.env.PS_TOKEN}`
             }
         },

@@ -26,9 +26,9 @@ class BotController {
 
         // Setup command processor
         this.commandProcessor = new CommandProcessor();
-        this.commandProcessor.registerCallback(Command.EnableBotInChannel, this.enableBot);
-        this.commandProcessor.registerCallback(Command.DisableBotInChannel, this.disableBot);
-        this.commandProcessor.registerCallback(Command.SetDailyTime, this.setDailyTime, 1);
+        this.commandProcessor.registerCallback(Command.EnableBotInChannel, this._enableBot);
+        this.commandProcessor.registerCallback(Command.DisableBotInChannel, this._disableBot);
+        this.commandProcessor.registerCallback(Command.SetDailyTime, this._setDailyTime, 1);
         // this.commandProcessor.registerCallback(Command.Notify, this.notifyUser);
 
         // Dota trackers map
@@ -38,7 +38,6 @@ class BotController {
         this.matchesApi = new MatchesAPI();
         this.tournamentsApi = new TournamentsAPI();
 
-        // TODO: Move into env variable
         this.client.login(process.env.DISCORD_TOKEN);
     }
 
@@ -47,10 +46,10 @@ class BotController {
             console.log("Ready");
         });
 
-        this.client.on('message', this.messageReceived);
+        this.client.on('message', this._messageReceived);
     }
 
-    messageReceived = (message: Message) => {
+    _messageReceived = (message: Message) => {
         if (message.author.bot) {
             return;
         }
@@ -60,7 +59,7 @@ class BotController {
         }
     }
 
-    enableBot = (message: Message, parameters: string[]) => {
+    _enableBot = (message: Message, parameters: string[]) => {
         console.log(`enable bot: ${message.channel.id}`);
         message.channel.send(":robot: Dota Bot enabled!");
 
@@ -69,11 +68,11 @@ class BotController {
         }
     }
 
-    disableBot = (message: Message, parameters: string[]) => {
+    _disableBot = (message: Message, parameters: string[]) => {
         console.log(`disable bot: ${message.channel.id}`);
         message.channel.send(":robot: Dota Bot disabled!");
 
-        this.getDotaTrackerForChannel(message.channel.id, (exists, tracker) => {
+        this._getDotaTrackerForChannel(message.channel.id, (exists, tracker) => {
             if (exists) {
                 tracker.shutdown();
                 this.dotaTrackers.delete(message.channel.id);
@@ -81,7 +80,7 @@ class BotController {
         });
     }
 
-    setDailyTime = (message: Message, parameters: string[]) => {
+    _setDailyTime = (message: Message, parameters: string[]) => {
         function parseTime(timeString: string): Date {
             if (timeString == '') return null;
 
@@ -102,7 +101,7 @@ class BotController {
             return d;
         }
 
-        this.getDotaTrackerForChannel(message.channel.id, (exists, tracker) => {
+        this._getDotaTrackerForChannel(message.channel.id, (exists, tracker) => {
             if (!exists) {
                 message.channel.send("You need to enable the bot on this channel! Please type \"!dotabot start\" first!")
             }
@@ -118,7 +117,7 @@ class BotController {
     notifyUser = (message: Message, parameters: string[]) => {
     }
 
-    getDotaTrackerForChannel = (channelId: string, callback: (exists: boolean, tracker: DotaTracker) => void) => {
+    _getDotaTrackerForChannel = (channelId: string, callback: (exists: boolean, tracker: DotaTracker) => void) => {
         if (this.dotaTrackers.has(channelId)) {
             callback(true, this.dotaTrackers.get(channelId));
             return;

@@ -8,7 +8,6 @@ class MatchesAPI implements IMatchesAPI {
         baseURL: 'https://api.pandascore.co/dota2/matches',
         headers: {
             common: {
-                // TODO: Move into env variable
                 Authorization: `Bearer ${process.env.PS_TOKEN}`
             }
         },

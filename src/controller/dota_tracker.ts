@@ -3,6 +3,7 @@ import { ITournamentsAPI } from "../pandascore/interfaces/tournaments/api";
 import MessageSender from "./message_sender";
 import { TextChannel } from 'discord.js';
 import { DailyMatchesMessage } from "./messages";
+import { RunningTournamentsResponse } from "../pandascore/interfaces/tournaments/responses";
 
 type TimerRef = ReturnType<typeof setTimeout>;
 
@@ -30,7 +31,7 @@ class DotaTracker {
 
     shutdown = () => {
         // Clear any timeout refs
-        if(this.dailyNotificationRef !== null) {
+        if (this.dailyNotificationRef !== null) {
             clearTimeout(this.dailyNotificationRef);
         }
     }
@@ -59,16 +60,22 @@ class DotaTracker {
 
     postDailyNotification = () => {
         // Get the list of running tournaments
-        this.tournamentsApi.getRunningTournaments({
-            sort: '-end_at'
-        }).then((upcomingTournaments) => {
+        Promise.all<RunningTournamentsResponse>([
+            this.tournamentsApi.getRunningTournaments({
+                sort: '-end_at'
+            }),
+            this.tournamentsApi.getUpcomingTournaments({
+                sort: 'begin_at'
+            })
+        ]).then((upcomingTournaments) => {
+            const flattenedTournaments = upcomingTournaments.flat();
             const beginningOfDay = new Date();
             beginningOfDay.setHours(0, 0, 0);
 
             const endOfDay = new Date();
             endOfDay.setHours(23, 59, 59);
 
-            const filteredTournaments = upcomingTournaments
+            const filteredTournaments = flattenedTournaments
                 .filter(tournament => tournament.serie.tier == 'a' || tournament.serie.tier == 's')
                 .filter(tournament => new Date(tournament.end_at) >= beginningOfDay);
 
@@ -86,15 +93,15 @@ class DotaTracker {
                             // If no stream can be found, find the first official && main stream
                             stream = match.streams_list.find(stream => stream.official && stream.main);
 
-                            if(stream === null) {
+                            if (stream === null) {
                                 // If no stream can be found still, find the first official stream
                                 stream = match.streams_list.find(stream => stream.official);
 
-                                if(stream === null) {
+                                if (stream === null) {
                                     // If _STILL_ no stream can be found, get the first english stream...
                                     stream = match.streams_list.find(stream => stream.language === "en");
 
-                                    if(stream === null) {
+                                    if (stream === null) {
                                         // If it's STILL STILL null, just accept the first one...
                                         stream = match.streams_list[0];
                                     }
@@ -116,7 +123,7 @@ class DotaTracker {
                 this.messageSender.postDailyMatches(tournamentMessages);
             }
         }).catch((error) => {
-            console.log(`Something went wrong when retrieving upcoming matches... ${error}`);
+            console.log(`Something went wrong when retrieving tournaments... ${error}`);
         }).finally(() => {
             // Setup next notification time to a day in the future
             const nextNotificationTime = new Date(this.dailyNotificationTime.getTime());

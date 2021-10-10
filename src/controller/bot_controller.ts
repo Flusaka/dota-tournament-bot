@@ -8,7 +8,7 @@ import { ITournamentsAPI } from '../pandascore/interfaces/tournaments/api';
 import MatchesAPI from '../pandascore/api/matches_api';
 import TournamentsAPI from '../pandascore/api/tournaments_api';
 import IDatabaseConnector from '../database/interfaces/database_connector';
-import { DefaultChannelConfig } from '../database/models/channel_models';
+import ChannelConfig, { DefaultChannelConfig } from '../database/models/channel_models';
 
 
 class BotController {
@@ -48,12 +48,22 @@ class BotController {
         this.client.login(process.env.DISCORD_TOKEN);
     }
 
-    initialise = async () => {
-        this.client.on('ready', () => {
+    initialise = () => {
+        this.client.on('ready', async () => {
             console.log("Ready");
+
+            const channelConfigs = await this.databaseConnector.getAllChannelConfigurations();
+            this._initialiseTrackers(channelConfigs);
         });
 
         this.client.on('message', this._messageReceived);
+    }
+
+    _initialiseTrackers = (channelConfigs: Map<string, ChannelConfig>) => {
+        channelConfigs.forEach((config, channelId) => {
+            const discordChannel = this.client.channels.cache.get(channelId) as TextChannel;
+            this.dotaTrackers.set(channelId, new DotaTracker(discordChannel, this.matchesApi, this.tournamentsApi, this.databaseConnector));
+        });
     }
 
     _messageReceived = (message: Message) => {
@@ -67,13 +77,16 @@ class BotController {
     }
 
     _enableBot = (message: Message, parameters: string[]) => {
-        console.log(`enable bot: ${message.channel.id}`);
-        message.channel.send(":robot: Dota Bot enabled!");
 
-        if (!this.dotaTrackers.has(message.channel.id)) {
-            this.dotaTrackers.set(message.channel.id, new DotaTracker(message.channel as TextChannel, this.matchesApi, this.tournamentsApi, this.databaseConnector));
-            this.databaseConnector.addChannelConfiguration(message.channel.id, DefaultChannelConfig);
-        }
+        this._getDotaTrackerForChannel(message.channel.id, (exists, tracker) => {
+            if (!exists) {
+                console.log(`enable bot: ${message.channel.id}`);
+                message.channel.send(":robot: Dota Bot enabled!");
+
+                this.dotaTrackers.set(message.channel.id, new DotaTracker(message.channel as TextChannel, this.matchesApi, this.tournamentsApi, this.databaseConnector));
+                this.databaseConnector.addChannelConfiguration(message.channel.id, DefaultChannelConfig);
+            }
+        })
     }
 
     _disableBot = (message: Message, parameters: string[]) => {
@@ -84,6 +97,7 @@ class BotController {
             if (exists) {
                 tracker.shutdown();
                 this.dotaTrackers.delete(message.channel.id);
+                this.databaseConnector.removeChannelConfiguration(message.channel.id);
             }
         });
     }

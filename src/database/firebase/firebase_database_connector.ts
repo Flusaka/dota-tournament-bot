@@ -13,6 +13,25 @@ class FirebaseDatabaseConnector implements IDatabaseConnector {
         this.channelsRef.child(channelId).set(config);
     }
 
+    async getAllChannelConfigurations(): Promise<Map<string, ChannelConfig>> {
+        try {
+            const channelsSnapshot = await this.channelsRef.get();
+            if (!channelsSnapshot.exists()) {
+                return Promise.reject("channels property does not exist");
+            }
+
+            const channelConfigs = new Map<string, ChannelConfig>();
+            channelsSnapshot.forEach(channelSnapshot => {
+                channelConfigs.set(channelSnapshot.key, channelSnapshot.val())
+            });
+
+            return await Promise.resolve(channelConfigs);
+        }
+        catch (error) {
+            return Promise.reject(error);
+        }
+    }
+
     updateChannelConfiguration(channelId: string, config: ChannelConfig) {
         this.channelsRef.child(channelId).update(config);
     }

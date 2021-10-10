@@ -37,7 +37,7 @@ class FirebaseDatabaseConnector implements IDatabaseConnector {
     }
 
     removeChannelConfiguration(channelId: string) {
-        throw new Error("Method not implemented.");
+        this.channelsRef.child(channelId).remove();
     }
 }
 

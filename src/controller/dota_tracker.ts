@@ -5,6 +5,7 @@ import { TextChannel } from 'discord.js';
 import { DailyMatchesMessage } from "./messages";
 import { RunningTournamentsResponse } from "../pandascore/interfaces/tournaments/responses";
 import IDatabaseConnector from "../database/interfaces/database_connector";
+import ChannelConfig from "../database/models/channel_models";
 
 type TimerRef = ReturnType<typeof setTimeout>;
 
@@ -30,9 +31,15 @@ class DotaTracker {
         this.messageSender = new MessageSender(channel);
         this.databaseConnector = databaseConnector;
 
-        // TODO: Load these from stored ChannelConfig eventually
         this.dailyNotificationTime = null;
         this.dailyNotificationRef = null;
+    }
+
+    setup = (config: ChannelConfig) => {
+        // TODO: Should probably handle if the most recent daily notification time stored was a long time ago... and re-adjust to the current day
+        if (config.dailyNotificationTime) {
+            this.setDailyNotificationTime(config.dailyNotificationTime);
+        }
     }
 
     shutdown = () => {
@@ -44,12 +51,12 @@ class DotaTracker {
 
     setDailyNotificationTime = (dateTime: Date) => {
         // TODO: Use the ChannelConfig to base the datetime off the stored timezone
-
         this.dailyNotificationTime = new Date(dateTime.getTime());
 
         // If it's at a time before now, add a day to the specified time
         if (dateTime.getTime() < Date.now()) {
             console.log("Time is before current time, adding a day!")
+            // TODO: Possibly need to alter this to re-adjust to the current day, rather than just arbitrarily adding 1
             this.dailyNotificationTime.setDate(dateTime.getDate() + 1);
         }
 

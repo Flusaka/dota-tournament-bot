@@ -62,7 +62,10 @@ class BotController {
     _initialiseTrackers = (channelConfigs: Map<string, ChannelConfig>) => {
         channelConfigs.forEach((config, channelId) => {
             const discordChannel = this.client.channels.cache.get(channelId) as TextChannel;
-            this.dotaTrackers.set(channelId, new DotaTracker(discordChannel, this.matchesApi, this.tournamentsApi, this.databaseConnector));
+            const tracker = new DotaTracker(discordChannel, this.matchesApi, this.tournamentsApi, this.databaseConnector);
+            tracker.setup(config);
+
+            this.dotaTrackers.set(channelId, tracker);
         });
     }
 

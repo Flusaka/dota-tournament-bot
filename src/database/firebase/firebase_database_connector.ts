@@ -1,6 +1,6 @@
 import IDatabaseConnector from "../interfaces/database_connector";
 import ChannelConfig from "../models/channel_models";
-import admin from 'firebase-admin';
+import admin, { database } from 'firebase-admin';
 
 class FirebaseDatabaseConnector implements IDatabaseConnector {
     private channelsRef: admin.database.Reference;
@@ -22,7 +22,7 @@ class FirebaseDatabaseConnector implements IDatabaseConnector {
 
             const channelConfigs = new Map<string, ChannelConfig>();
             channelsSnapshot.forEach(channelSnapshot => {
-                channelConfigs.set(channelSnapshot.key, channelSnapshot.val())
+                channelConfigs.set(channelSnapshot.key, this._snapshotToChannelConfig(channelSnapshot));
             });
 
             return await Promise.resolve(channelConfigs);
@@ -38,6 +38,14 @@ class FirebaseDatabaseConnector implements IDatabaseConnector {
 
     removeChannelConfiguration(channelId: string) {
         this.channelsRef.child(channelId).remove();
+    }
+
+    _snapshotToChannelConfig(snapshot: database.DataSnapshot): ChannelConfig {
+        let config: ChannelConfig = { ...snapshot.val() };
+        if (config.dailyNotificationTime) {
+            config.dailyNotificationTime = new Date(config.dailyNotificationTime);
+        }
+        return config;
     }
 }
 

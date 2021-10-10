@@ -1,6 +1,8 @@
 import express from 'express';
 import dotenv from 'dotenv';
+import admin from 'firebase-admin';
 import BotController from './controller/bot_controller';
+import FirebaseDatabaseConnector from './database/firebase/firebase_database_connector';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -11,5 +13,14 @@ app.listen(port, () => {
 
 dotenv.config();
 
-const botController = new BotController();
+admin.initializeApp({
+    credential: admin.credential.cert({
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY,
+        projectId: process.env.FIREBASE_PROJECT_ID
+    }),
+    databaseURL: process.env.FIREBASE_DATABASE_URL
+});
+
+const botController = new BotController(new FirebaseDatabaseConnector());
 botController.initialise();

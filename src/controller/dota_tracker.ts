@@ -4,27 +4,33 @@ import MessageSender from "./message_sender";
 import { TextChannel } from 'discord.js';
 import { DailyMatchesMessage } from "./messages";
 import { RunningTournamentsResponse } from "../pandascore/interfaces/tournaments/responses";
+import IDatabaseConnector from "../database/interfaces/database_connector";
 
 type TimerRef = ReturnType<typeof setTimeout>;
 
 class DotaTracker {
-    private messageSender: MessageSender;
-
-    private dailyNotificationTime: Date;
+    private channelId: string;
 
     private matchesApi: IMatchesAPI;
 
     private tournamentsApi: ITournamentsAPI;
 
+    private databaseConnector: IDatabaseConnector;
+
+    private messageSender: MessageSender;
+
+    private dailyNotificationTime: Date;
+
     private dailyNotificationRef: TimerRef;
 
-    private notifications: Map<string, TimerRef>;
-
-    constructor(channel: TextChannel, matchesApi: IMatchesAPI, tournamentsApi: ITournamentsAPI) {
-        this.messageSender = new MessageSender(channel);
+    constructor(channel: TextChannel, matchesApi: IMatchesAPI, tournamentsApi: ITournamentsAPI, databaseConnector: IDatabaseConnector) {
+        this.channelId = channel.id;
         this.matchesApi = matchesApi;
         this.tournamentsApi = tournamentsApi;
-        this.notifications = new Map<string, TimerRef>();
+        this.messageSender = new MessageSender(channel);
+        this.databaseConnector = databaseConnector;
+
+        // TODO: Load these from stored ChannelConfig eventually
         this.dailyNotificationTime = null;
         this.dailyNotificationRef = null;
     }
@@ -37,7 +43,8 @@ class DotaTracker {
     }
 
     setDailyNotificationTime = (dateTime: Date) => {
-        // TODO: Cancel existing notification if there is one...
+        // TODO: Use the ChannelConfig to base the datetime off the stored timezone
+
         this.dailyNotificationTime = new Date(dateTime.getTime());
 
         // If it's at a time before now, add a day to the specified time
@@ -47,6 +54,11 @@ class DotaTracker {
         }
 
         console.log(`Setting daily notification time to ${this.dailyNotificationTime.toString()}`)
+
+        // Store the next time to the database
+        this.databaseConnector.updateChannelConfiguration(this.channelId, {
+            dailyNotificationTime: this.dailyNotificationTime
+        });
 
         if (this.dailyNotificationRef !== null) {
             console.log("Clearing existing notification timeout");

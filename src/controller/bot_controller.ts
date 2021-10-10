@@ -1,12 +1,14 @@
 import Discord, { Message, TextChannel } from 'discord.js';
 import { Command, CommandProcessor } from "./command_processor";
 import { DotaTracker } from './dota_tracker';
-import MatchesTestAPI from '../test/api/matches_test_api';
+// import MatchesTestAPI from '../test/api/matches_test_api';
 import { IMatchesAPI } from '../pandascore/interfaces/matches/api';
 import { ITournamentsAPI } from '../pandascore/interfaces/tournaments/api';
-import TournamentsTestAPI from '../test/api/tournaments_test_api';
+// import TournamentsTestAPI from '../test/api/tournaments_test_api';
 import MatchesAPI from '../pandascore/api/matches_api';
 import TournamentsAPI from '../pandascore/api/tournaments_api';
+import IDatabaseConnector from '../database/interfaces/database_connector';
+import { DefaultChannelConfig } from '../database/models/channel_models';
 
 
 class BotController {
@@ -20,7 +22,9 @@ class BotController {
 
     private tournamentsApi: ITournamentsAPI;
 
-    constructor() {
+    private databaseConnector: IDatabaseConnector;
+
+    constructor(databaseConnector: IDatabaseConnector) {
         // Discord client
         this.client = new Discord.Client();
 
@@ -37,6 +41,9 @@ class BotController {
         // API handlers
         this.matchesApi = new MatchesAPI();
         this.tournamentsApi = new TournamentsAPI();
+
+        // Database connector
+        this.databaseConnector = databaseConnector;
 
         this.client.login(process.env.DISCORD_TOKEN);
     }
@@ -64,7 +71,8 @@ class BotController {
         message.channel.send(":robot: Dota Bot enabled!");
 
         if (!this.dotaTrackers.has(message.channel.id)) {
-            this.dotaTrackers.set(message.channel.id, new DotaTracker(message.channel as TextChannel, this.matchesApi, this.tournamentsApi));
+            this.dotaTrackers.set(message.channel.id, new DotaTracker(message.channel as TextChannel, this.matchesApi, this.tournamentsApi, this.databaseConnector));
+            this.databaseConnector.addChannelConfiguration(message.channel.id, DefaultChannelConfig);
         }
     }
 

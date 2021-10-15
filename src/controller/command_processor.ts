@@ -7,6 +7,7 @@ enum Command {
     EnableBotInChannel = "start",
     DisableBotInChannel = "stop",
     SetDailyTime = "daily",
+    SetTimeZone = "timezone",
     Notify = "notify"
 }
 

@@ -64,6 +64,15 @@ class DotaTracker {
         this._setDailyNotificationTime(hour, minutes);
     }
 
+    setTimeZone = (timeZone: string) => {
+        // TODO: Re-evaluate notification times, since we've potentially moved some hours ahead or behind...
+        this.databaseConnector.updateChannelConfiguration(this.channelId, {
+            timeZone: timeZone
+        });
+
+        this.messageSender.send(`:robot: Timezone is now set to: ${timeZone}`);
+    }
+
     _setDailyNotificationTime = (hour: number, minutes: number) => {
         const notificationTime = moment.tz(this.config.timeZone);
         notificationTime.set("hour", hour);

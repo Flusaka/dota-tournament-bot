@@ -33,6 +33,7 @@ class BotController {
         this.commandProcessor.registerCallback(Command.EnableBotInChannel, this._enableBot);
         this.commandProcessor.registerCallback(Command.DisableBotInChannel, this._disableBot);
         this.commandProcessor.registerCallback(Command.SetDailyTime, this._setDailyTime, 1);
+        this.commandProcessor.registerCallback(Command.SetTimeZone, this._setTimeZone, 1);
         // this.commandProcessor.registerCallback(Command.Notify, this.notifyUser);
 
         // Dota trackers map
@@ -139,6 +140,18 @@ class BotController {
                 }
             }
         });
+    }
+
+    _setTimeZone = (message: Message, parameters: string[]) => {
+        this._getDotaTrackerForChannel(message.channel.id, (exists, tracker) => {
+            if (!exists) {
+                message.channel.send("You need to enable the bot on this channel! Please type \"!dotabot start\" first!")
+            }
+            else {
+                // Pass to tracker
+                tracker.setTimeZone(parameters[0]);
+            }
+        })
     }
 
     notifyUser = (message: Message, parameters: string[]) => {

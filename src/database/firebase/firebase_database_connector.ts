@@ -42,9 +42,6 @@ class FirebaseDatabaseConnector implements IDatabaseConnector {
 
     _snapshotToChannelConfig(snapshot: database.DataSnapshot): ChannelConfig {
         let config: ChannelConfig = { ...snapshot.val() };
-        if (config.dailyNotificationTime) {
-            config.dailyNotificationTime = new Date(config.dailyNotificationTime);
-        }
         return config;
     }
 }

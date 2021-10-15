@@ -1,7 +1,8 @@
+import { TextChannel } from 'discord.js';
+import moment, { unitOfTime } from 'moment-timezone';
 import { IMatchesAPI } from "../pandascore/interfaces/matches/api";
 import { ITournamentsAPI } from "../pandascore/interfaces/tournaments/api";
 import MessageSender from "./message_sender";
-import { TextChannel } from 'discord.js';
 import { DailyMatchesMessage } from "./messages";
 import { RunningTournamentsResponse } from "../pandascore/interfaces/tournaments/responses";
 import IDatabaseConnector from "../database/interfaces/database_connector";
@@ -20,9 +21,11 @@ class DotaTracker {
 
     private messageSender: MessageSender;
 
-    private dailyNotificationTime: Date;
+    private dailyNotificationTime: moment.Moment;
 
     private dailyNotificationRef: TimerRef;
+
+    private config: ChannelConfig;
 
     constructor(channel: TextChannel, matchesApi: IMatchesAPI, tournamentsApi: ITournamentsAPI, databaseConnector: IDatabaseConnector) {
         this.channelId = channel.id;
@@ -36,9 +39,11 @@ class DotaTracker {
     }
 
     setup = (config: ChannelConfig) => {
+        this.config = { ...config };
+
         // TODO: Should probably handle if the most recent daily notification time stored was a long time ago... and re-adjust to the current day
-        if (config.dailyNotificationTime) {
-            this.setDailyNotificationTime(config.dailyNotificationTime);
+        if (!isNaN(this.config.dailyNotificationHour) && !isNaN(this.config.dailyNotificationMinute)) {
+            this.setDailyNotificationTime(this.config.dailyNotificationHour, this.config.dailyNotificationMinute);
         }
     }
 
@@ -49,35 +54,46 @@ class DotaTracker {
         }
     }
 
-    setDailyNotificationTime = (dateTime: Date) => {
-        // TODO: Use the ChannelConfig to base the datetime off the stored timezone
-        this.dailyNotificationTime = new Date(dateTime.getTime());
-
-        // If it's at a time before now, add a day to the specified time
-        if (dateTime.getTime() < Date.now()) {
-            console.log("Time is before current time, adding a day!")
-            // TODO: Possibly need to alter this to re-adjust to the current day, rather than just arbitrarily adding 1
-            this.dailyNotificationTime.setDate(dateTime.getDate() + 1);
-        }
-
-        console.log(`Setting daily notification time to ${this.dailyNotificationTime.toString()}`)
-
+    setDailyNotificationTime = (hour: number, minutes: number) => {
         // Store the next time to the database
         this.databaseConnector.updateChannelConfiguration(this.channelId, {
-            dailyNotificationTime: this.dailyNotificationTime
+            dailyNotificationHour: hour,
+            dailyNotificationMinute: minutes
         });
 
+        const now = moment().tz(this.config.timeZone);
+        const notificationTime = moment.tz(this.config.timeZone);
+        notificationTime.set("hours", hour);
+        notificationTime.set("minutes", minutes);
+        notificationTime.set("seconds", 0);
+
+        // If it's at a time before now, add a day to the specified time
+        if (notificationTime < now) {
+            console.log("Time is before current time, adding a day!")
+            notificationTime.add(1, "day");
+        }
+
+        this.messageSender.send(`:robot: Daily notifications of games will occur at: ${notificationTime.toISOString(true)}`);
+        this._setDailyNotificationTimeout(notificationTime);
+    }
+
+    _setDailyNotificationTimeout(nextNotificationTime: moment.Moment) {
         if (this.dailyNotificationRef !== null) {
             console.log("Clearing existing notification timeout");
             clearTimeout(this.dailyNotificationRef);
             this.dailyNotificationRef = null;
         }
 
-        const timeout = this.dailyNotificationTime.getTime() - Date.now();
-        this.dailyNotificationRef = setTimeout(this.postDailyNotification, timeout);
+        const now = moment().tz(this.config.timeZone);
+        const timeout = nextNotificationTime.valueOf() - now.valueOf();
+
+        console.log(`Setting daily notification time to ${nextNotificationTime.toISOString()}`);
+        this.dailyNotificationTime = nextNotificationTime;
+        console.log(`Timeout callback will fire: ${timeout}`);
+        this.dailyNotificationRef = setTimeout(this._postDailyNotification, timeout);
     }
 
-    postDailyNotification = () => {
+    _postDailyNotification = () => {
         // Get the list of running tournaments
         Promise.all<RunningTournamentsResponse>([
             this.tournamentsApi.getRunningTournaments({
@@ -145,10 +161,9 @@ class DotaTracker {
             console.log(`Something went wrong when retrieving tournaments... ${error}`);
         }).finally(() => {
             // Setup next notification time to a day in the future
-            const nextNotificationTime = new Date(this.dailyNotificationTime.getTime());
-            // nextNotificationTime.setMinutes(nextNotificationTime.getMinutes() + 1);
-            nextNotificationTime.setDate(nextNotificationTime.getDate() + 1);
-            this.setDailyNotificationTime(nextNotificationTime);
+            const nextNotificationTime = moment.tz(this.dailyNotificationTime, this.config.timeZone);
+            nextNotificationTime.add(1, "day");
+            this._setDailyNotificationTimeout(nextNotificationTime);
         });
     }
 }

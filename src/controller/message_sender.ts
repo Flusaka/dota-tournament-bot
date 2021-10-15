@@ -48,6 +48,10 @@ class MessageSender {
         );
         discordMessage.suppressEmbeds(true);
     }
+
+    send = (message: string) => {
+        this.channel.send(message);
+    }
 }
 
 export default MessageSender;

@@ -1,6 +1,7 @@
 type ChannelConfig = {
     timeZone?: string;
-    dailyNotificationTime?: Date;
+    dailyNotificationHour?: number;
+    dailyNotificationMinute?: number;
 }
 
 const defaultChannelConfig: ChannelConfig = {

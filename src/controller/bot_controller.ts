@@ -80,13 +80,14 @@ class BotController {
     }
 
     _enableBot = (message: Message, parameters: string[]) => {
-
         this._getDotaTrackerForChannel(message.channel.id, (exists, tracker) => {
             if (!exists) {
                 console.log(`enable bot: ${message.channel.id}`);
                 message.channel.send(":robot: Dota Bot enabled!");
 
-                this.dotaTrackers.set(message.channel.id, new DotaTracker(message.channel as TextChannel, this.matchesApi, this.tournamentsApi, this.databaseConnector));
+                const tracker = new DotaTracker(message.channel as TextChannel, this.matchesApi, this.tournamentsApi, this.databaseConnector);
+                tracker.setup(DefaultChannelConfig);
+                this.dotaTrackers.set(message.channel.id, tracker);
                 this.databaseConnector.addChannelConfiguration(message.channel.id, DefaultChannelConfig);
             }
         })
@@ -106,11 +107,11 @@ class BotController {
     }
 
     _setDailyTime = (message: Message, parameters: string[]) => {
-        function parseTime(timeString: string): Date {
+        function parseTime(timeString: string): [number, number] {
             if (timeString == '') return null;
 
             var time = timeString.match(/(\d+)(:(\d\d))?\s*(p?)/i);
-            if (time == null) return null;
+            if (time == null) return [-1, -1];
 
             var hours = parseInt(time[1], 10);
             if (hours == 12 && !time[4]) {
@@ -119,11 +120,8 @@ class BotController {
             else {
                 hours += (hours < 12 && time[4]) ? 12 : 0;
             }
-            var d = new Date();
-            d.setHours(hours);
-            d.setMinutes(parseInt(time[3], 10) || 0);
-            d.setSeconds(0, 0);
-            return d;
+
+            return [hours, parseInt(time[3], 10) || 0]
         }
 
         this._getDotaTrackerForChannel(message.channel.id, (exists, tracker) => {
@@ -132,9 +130,13 @@ class BotController {
             }
             else {
                 // Parse time
-                const dailyTime = parseTime(parameters[0]);
-                message.channel.send(`:robot: Daily notifications of games will occur at: ${dailyTime.toTimeString()}`)
-                tracker.setDailyNotificationTime(dailyTime);
+                const [hours, minutes] = parseTime(parameters[0]);
+                if (hours < 0 || minutes < 0) {
+                    message.channel.send("Please enter a time in the correct format! e.g. 5PM, 5:00PM, 17:00 etc.")
+                }
+                else {
+                    tracker.setDailyNotificationTime(hours, minutes);
+                }
             }
         });
     }

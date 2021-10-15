@@ -60,6 +60,9 @@ class DotaTracker {
             dailyNotificationMinute: minutes
         });
 
+        this.config.dailyNotificationHour = hour;
+        this.config.dailyNotificationMinute = minutes;
+
         this.messageSender.send(`:robot: Daily notifications of games will occur at: ${hour > 12 ? hour - 12 : hour}:${minutes < 10 ? `0${minutes}` : minutes} ${hour < 12 ? 'AM' : 'PM'}`);
         this._setDailyNotificationTime(hour, minutes);
     }
@@ -69,6 +72,7 @@ class DotaTracker {
         this.databaseConnector.updateChannelConfiguration(this.channelId, {
             timeZone: timeZone
         });
+        this.config.timeZone = timeZone;
 
         this.messageSender.send(`:robot: Timezone is now set to: ${timeZone}`);
     }

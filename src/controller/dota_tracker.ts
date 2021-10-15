@@ -41,9 +41,8 @@ class DotaTracker {
     setup = (config: ChannelConfig) => {
         this.config = { ...config };
 
-        // TODO: Should probably handle if the most recent daily notification time stored was a long time ago... and re-adjust to the current day
         if (!isNaN(this.config.dailyNotificationHour) && !isNaN(this.config.dailyNotificationMinute)) {
-            this.setDailyNotificationTime(this.config.dailyNotificationHour, this.config.dailyNotificationMinute);
+            this._setDailyNotificationTime(this.config.dailyNotificationHour, this.config.dailyNotificationMinute);
         }
     }
 
@@ -61,12 +60,22 @@ class DotaTracker {
             dailyNotificationMinute: minutes
         });
 
-        const now = moment().tz(this.config.timeZone);
+        this.messageSender.send(`:robot: Daily notifications of games will occur at: ${hour > 12 ? hour - 12 : hour}:${minutes < 10 ? `0${minutes}` : minutes} ${hour < 12 ? 'AM' : 'PM'}`);
+        this._setDailyNotificationTime(hour, minutes);
+    }
+
+    _setDailyNotificationTime = (hour: number, minutes: number) => {
         const notificationTime = moment.tz(this.config.timeZone);
-        notificationTime.set("hours", hour);
+        notificationTime.set("hour", hour);
         notificationTime.set("minutes", minutes);
         notificationTime.set("seconds", 0);
         notificationTime.set("milliseconds", 0);
+
+        this._setDailyNotificationTimeMoment(notificationTime);
+    }
+
+    _setDailyNotificationTimeMoment = (notificationTime: moment.Moment) => {
+        const now = moment().tz(this.config.timeZone);
 
         // If it's at a time before now, add a day to the specified time
         if (notificationTime < now) {
@@ -74,22 +83,20 @@ class DotaTracker {
             notificationTime.add(1, "day");
         }
 
-        this.messageSender.send(`:robot: Daily notifications of games will occur at: ${notificationTime.toISOString(true)}`);
-        this._setDailyNotificationTimeout(notificationTime);
+        console.log(`Setting daily notification time to ${notificationTime.toISOString()}`);
+        this.dailyNotificationTime = notificationTime;
+
+        const timeout = notificationTime.valueOf() - now.valueOf();
+        this._setDailyNotificationTimeout(timeout);
     }
 
-    _setDailyNotificationTimeout(nextNotificationTime: moment.Moment) {
+    _setDailyNotificationTimeout = (timeout: number) => {
         if (this.dailyNotificationRef !== null) {
             console.log("Clearing existing notification timeout");
             clearTimeout(this.dailyNotificationRef);
             this.dailyNotificationRef = null;
         }
 
-        const now = moment().tz(this.config.timeZone);
-        const timeout = nextNotificationTime.valueOf() - now.valueOf();
-
-        console.log(`Setting daily notification time to ${nextNotificationTime.toISOString()}`);
-        this.dailyNotificationTime = nextNotificationTime;
         console.log(`Timeout callback will fire: ${timeout}`);
         this.dailyNotificationRef = setTimeout(this._postDailyNotification, timeout);
     }
@@ -164,7 +171,7 @@ class DotaTracker {
             // Setup next notification time to a day in the future
             const nextNotificationTime = moment.tz(this.dailyNotificationTime, this.config.timeZone);
             nextNotificationTime.add(1, "day");
-            this._setDailyNotificationTimeout(nextNotificationTime);
+            this._setDailyNotificationTimeMoment(nextNotificationTime);
         });
     }
 }

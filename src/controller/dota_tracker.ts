@@ -66,6 +66,7 @@ class DotaTracker {
         notificationTime.set("hours", hour);
         notificationTime.set("minutes", minutes);
         notificationTime.set("seconds", 0);
+        notificationTime.set("milliseconds", 0);
 
         // If it's at a time before now, add a day to the specified time
         if (notificationTime < now) {

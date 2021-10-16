@@ -60,7 +60,7 @@ class BotController {
         this.client.on('message', this._messageReceived);
     }
 
-    _initialiseTrackers = (channelConfigs: Map<string, ChannelConfig>) => {
+    private _initialiseTrackers = (channelConfigs: Map<string, ChannelConfig>) => {
         channelConfigs.forEach((config, channelId) => {
             const discordChannel = this.client.channels.cache.get(channelId) as TextChannel;
             const tracker = new DotaTracker(discordChannel, this.matchesApi, this.tournamentsApi, this.databaseConnector);
@@ -70,7 +70,7 @@ class BotController {
         });
     }
 
-    _messageReceived = (message: Message) => {
+    private _messageReceived = (message: Message) => {
         if (message.author.bot) {
             return;
         }
@@ -80,7 +80,7 @@ class BotController {
         }
     }
 
-    _enableBot = (message: Message, parameters: string[]) => {
+    private _enableBot = (message: Message, parameters: string[]) => {
         this._getDotaTrackerForChannel(message.channel.id, (exists, tracker) => {
             if (!exists) {
                 console.log(`enable bot: ${message.channel.id}`);
@@ -94,7 +94,7 @@ class BotController {
         })
     }
 
-    _disableBot = (message: Message, parameters: string[]) => {
+    private _disableBot = (message: Message, parameters: string[]) => {
         console.log(`disable bot: ${message.channel.id}`);
         message.channel.send(":robot: Dota Bot disabled!");
 
@@ -107,7 +107,7 @@ class BotController {
         });
     }
 
-    _setDailyTime = (message: Message, parameters: string[]) => {
+    private _setDailyTime = (message: Message, parameters: string[]) => {
         function parseTime(timeString: string): [number, number] {
             if (timeString == '') return null;
 
@@ -142,7 +142,7 @@ class BotController {
         });
     }
 
-    _setTimeZone = (message: Message, parameters: string[]) => {
+    private _setTimeZone = (message: Message, parameters: string[]) => {
         this._getDotaTrackerForChannel(message.channel.id, (exists, tracker) => {
             if (!exists) {
                 message.channel.send("You need to enable the bot on this channel! Please type \"!dotabot start\" first!")

@@ -77,7 +77,7 @@ class DotaTracker {
         this.messageSender.send(`:robot: Timezone is now set to: ${timeZone}`);
     }
 
-    _setDailyNotificationTime = (hour: number, minutes: number) => {
+    private _setDailyNotificationTime = (hour: number, minutes: number) => {
         const notificationTime = moment.tz(this.config.timeZone);
         notificationTime.set("hour", hour);
         notificationTime.set("minutes", minutes);
@@ -87,7 +87,7 @@ class DotaTracker {
         this._setDailyNotificationTimeMoment(notificationTime);
     }
 
-    _setDailyNotificationTimeMoment = (notificationTime: moment.Moment) => {
+    private _setDailyNotificationTimeMoment = (notificationTime: moment.Moment) => {
         const now = moment().tz(this.config.timeZone);
 
         // If it's at a time before now, add a day to the specified time
@@ -103,7 +103,7 @@ class DotaTracker {
         this._setDailyNotificationTimeout(timeout);
     }
 
-    _setDailyNotificationTimeout = (timeout: number) => {
+    private _setDailyNotificationTimeout = (timeout: number) => {
         if (this.dailyNotificationRef !== null) {
             console.log("Clearing existing notification timeout");
             clearTimeout(this.dailyNotificationRef);
@@ -114,7 +114,7 @@ class DotaTracker {
         this.dailyNotificationRef = setTimeout(this._postDailyNotification, timeout);
     }
 
-    _postDailyNotification = () => {
+    private _postDailyNotification = () => {
         // Get the list of running tournaments
         Promise.all<RunningTournamentsResponse>([
             this.tournamentsApi.getRunningTournaments({
@@ -125,19 +125,20 @@ class DotaTracker {
             })
         ]).then((upcomingTournaments) => {
             const flattenedTournaments = upcomingTournaments.flat();
-            const beginningOfDay = new Date();
-            beginningOfDay.setHours(0, 0, 0);
+            const beginningOfDay = moment.tz(this.config.timeZone).startOf("day");
+            const endOfDay = moment.tz(this.config.timeZone).endOf("day");
 
-            const endOfDay = new Date();
-            endOfDay.setHours(23, 59, 59);
-
+            // TODO: Add alerted tiers to config
             const filteredTournaments = flattenedTournaments
                 .filter(tournament => tournament.serie.tier == 'a' || tournament.serie.tier == 's')
-                .filter(tournament => new Date(tournament.end_at) >= beginningOfDay);
+                .filter(tournament => {
+                    const tournamentEnd = moment(tournament.end_at).tz(this.config.timeZone);
+                    return tournamentEnd >= beginningOfDay;
+                });
 
             const tournamentMessages: DailyMatchesMessage[] = filteredTournaments.map((tournament) => {
                 const filteredMatches = tournament.matches.filter(match => {
-                    return new Date(match.begin_at) <= endOfDay && (match.end_at === null || new Date(match.end_at) >= beginningOfDay);
+                    return moment(match.begin_at).tz(this.config.timeZone) <= endOfDay && (match.end_at === null || moment(match.end_at).tz(this.config.timeZone) >= beginningOfDay);
                 });
 
                 return {
@@ -169,7 +170,7 @@ class DotaTracker {
                             matchId: match.id,
                             matchTitle: match.name,
                             streamLink: stream ? stream.raw_url : "Unknown :person_shrugging:",
-                            startTime: new Date(match.begin_at)
+                            startTime: moment(match.begin_at).tz(this.config.timeZone)
                         }
                     })
                 };

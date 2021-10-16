@@ -17,13 +17,6 @@ class MessageSender {
             return;
         }
 
-        const formatter = new Intl.DateTimeFormat('en-GB', {
-            timeZone: "Europe/London",
-            hour: '2-digit',
-            minute: '2-digit',
-            hourCycle: 'h12'
-        });
-
         const organisedMatches: Array<MatchDetails[]> = [];
         while (message.matches.length > 0) {
             const streamLink = message.matches[0].streamLink;
@@ -37,7 +30,7 @@ class MessageSender {
         const matchesText: string = organisedMatches.map((matches) => {
             let matchesSetText = `Games on: ${matches[0].streamLink}\n\n`;
             matchesSetText = matchesSetText.concat(matches.map(match => {
-                const startTime = formatter.format(match.startTime)
+                const startTime = match.startTime.format("h:mm A")
                 return `${startTime} - ${match.matchTitle}`;
             }).join('\n'));
             return matchesSetText;

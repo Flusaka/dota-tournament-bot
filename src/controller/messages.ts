@@ -1,3 +1,5 @@
+import moment from "moment";
+
 type MatchDetails = {
     readonly matchId: number;
 
@@ -8,7 +10,7 @@ type MatchDetails = {
     readonly streamLink: string;
 
     // Start time
-    readonly startTime: Date;
+    readonly startTime: moment.Moment;
 }
 
 type DailyMatchesMessage = {

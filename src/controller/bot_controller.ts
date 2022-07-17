@@ -1,15 +1,9 @@
 import Discord, { Message, TextChannel } from 'discord.js';
 import { Command, CommandProcessor } from "./command_processor";
 import { DotaTracker } from './dota_tracker';
-// import MatchesTestAPI from '../test/api/matches_test_api';
-import { IMatchesAPI } from '../pandascore/interfaces/matches/api';
-import { ITournamentsAPI } from '../pandascore/interfaces/tournaments/api';
-// import TournamentsTestAPI from '../test/api/tournaments_test_api';
-import MatchesAPI from '../pandascore/api/matches_api';
-import TournamentsAPI from '../pandascore/api/tournaments_api';
 import IDatabaseConnector from '../database/interfaces/database_connector';
 import ChannelConfig, { DefaultChannelConfig } from '../database/models/channel_models';
-
+import IDotaAPIClient from '../api/interfaces/api_client';
 
 class BotController {
     private client: Discord.Client;
@@ -18,13 +12,11 @@ class BotController {
 
     private dotaTrackers: Map<string, DotaTracker>;
 
-    private matchesApi: IMatchesAPI;
-
-    private tournamentsApi: ITournamentsAPI;
+    private dotaApiClient: IDotaAPIClient;
 
     private databaseConnector: IDatabaseConnector;
 
-    constructor(databaseConnector: IDatabaseConnector) {
+    constructor(databaseConnector: IDatabaseConnector, apiClient: IDotaAPIClient) {
         // Discord client
         this.client = new Discord.Client();
 
@@ -40,8 +32,7 @@ class BotController {
         this.dotaTrackers = new Map<string, DotaTracker>();
 
         // API handlers
-        this.matchesApi = new MatchesAPI();
-        this.tournamentsApi = new TournamentsAPI();
+        this.dotaApiClient = apiClient;
 
         // Database connector
         this.databaseConnector = databaseConnector;
@@ -63,7 +54,7 @@ class BotController {
     private _initialiseTrackers = (channelConfigs: Map<string, ChannelConfig>) => {
         channelConfigs.forEach((config, channelId) => {
             const discordChannel = this.client.channels.cache.get(channelId) as TextChannel;
-            const tracker = new DotaTracker(discordChannel, this.matchesApi, this.tournamentsApi, this.databaseConnector);
+            const tracker = new DotaTracker(discordChannel, this.dotaApiClient, this.databaseConnector);
             tracker.setup(config);
 
             this.dotaTrackers.set(channelId, tracker);
@@ -86,7 +77,7 @@ class BotController {
                 console.log(`enable bot: ${message.channel.id}`);
                 message.channel.send(":robot: Dota Bot enabled!");
 
-                const tracker = new DotaTracker(message.channel as TextChannel, this.matchesApi, this.tournamentsApi, this.databaseConnector);
+                const tracker = new DotaTracker(message.channel as TextChannel, this.dotaApiClient, this.databaseConnector);
                 tracker.setup(DefaultChannelConfig);
                 this.dotaTrackers.set(message.channel.id, tracker);
                 this.databaseConnector.addChannelConfiguration(message.channel.id, DefaultChannelConfig);
@@ -108,11 +99,11 @@ class BotController {
     }
 
     private _setDailyTime = (message: Message, parameters: string[]) => {
-        function parseTime(timeString: string): [number, number] {
+        function parseTime(timeString: string): { hours: number, minutes: number } {
             if (timeString == '') return null;
 
             var time = timeString.match(/(\d+)(:(\d\d))?\s*(p?)/i);
-            if (time == null) return [-1, -1];
+            if (time == null) return { hours: -1, minutes: -1 };
 
             var hours = parseInt(time[1], 10);
             if (hours == 12 && !time[4]) {
@@ -122,7 +113,7 @@ class BotController {
                 hours += (hours < 12 && time[4]) ? 12 : 0;
             }
 
-            return [hours, parseInt(time[3], 10) || 0]
+            return { hours, minutes: parseInt(time[3], 10) || 0 }
         }
 
         this._getDotaTrackerForChannel(message.channel.id, (exists, tracker) => {
@@ -131,7 +122,7 @@ class BotController {
             }
             else {
                 // Parse time
-                const [hours, minutes] = parseTime(parameters[0]);
+                const { hours, minutes } = parseTime(parameters[0]);
                 if (hours < 0 || minutes < 0) {
                     message.channel.send("Please enter a time in the correct format! e.g. 5PM, 5:00PM, 17:00 etc.")
                 }
@@ -154,10 +145,10 @@ class BotController {
         })
     }
 
-    notifyUser = (message: Message, parameters: string[]) => {
+    private notifyUser = (message: Message, parameters: string[]) => {
     }
 
-    _getDotaTrackerForChannel = (channelId: string, callback: (exists: boolean, tracker: DotaTracker) => void) => {
+    private _getDotaTrackerForChannel = (channelId: string, callback: (exists: boolean, tracker: DotaTracker) => void) => {
         if (this.dotaTrackers.has(channelId)) {
             callback(true, this.dotaTrackers.get(channelId));
             return;

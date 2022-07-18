@@ -1,58 +1,35 @@
 import IDotaAPIClient from "../interfaces/api_client";
 import fetch from 'cross-fetch';
-import { ApolloClient, createHttpLink, gql } from '@apollo/client/core';
-import { InMemoryCache, NormalizedCacheObject } from '@apollo/client/cache';
-import { setContext } from "@apollo/client/link/context"
 import { League } from "../models/league";
+import { LEAGUES_QUERY } from "./queries";
 
 class DotaGraphQLClient implements IDotaAPIClient {
-    private client: ApolloClient<NormalizedCacheObject>;
+    API_URL = 'https://api.stratz.com/graphql';
 
-    constructor() {
-        console.log(process.env.STRATZ_TOKEN);
-        const authLink = setContext((_, { headers }) => {
-            return {
-                headers: {
-                    ...headers,
-                    authorization: `Bearer ${process.env.STRATZ_TOKEN}`
-                }
-            }
-        });
-
-        const httpLink = createHttpLink({
-            uri: "https://api.stratz.com/graphql",
-            fetch
-        });
-
-        this.client = new ApolloClient<NormalizedCacheObject>({
-            cache: new InMemoryCache(),
-            link: authLink.concat(httpLink)
-        });
+    getMatchesToday(): Promise<League[]> {
+        return this._query(LEAGUES_QUERY);
     }
 
-    getActiveLeagues(): Promise<League[]> {
-        return new Promise(async (resolve, reject) => {
-            try {
-                const leagues = await this.client.query<League[]>({
-                    query: gql`
-                    query {
-                        leagues(request: {tiers: DPC_LEAGUE, leagueEnded: false}) {
-                            id
-                            displayName
-                            region
-                            startDateTime
-                            endDateTime
-                            description
-                        }
-                    }
-                    `
-                });
+    private _query<DataT>(query: string, variables?: object): Promise<DataT> {
+        return new Promise((resolve, reject) => {
+            const body = JSON.stringify({
+                query,
+                variables
+            });
 
-                return resolve(leagues.data);
-            }
-            catch (error) {
+            fetch(this.API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${process.env.STRATZ_TOKEN}`
+                },
+                body
+            }).then(result => result.json()).then(result => {
+                return resolve(result.data);
+            }).catch(error => {
                 return reject(error);
-            }
+            });
         });
     }
 }

@@ -1,7 +1,7 @@
 import { League } from "../models/league";
 
 interface IDotaAPIClient {
-    getActiveLeagues(): Promise<League[]>;
+    getMatchesToday(): Promise<League[]>;
 }
 
 export default IDotaAPIClient;

@@ -14,7 +14,7 @@ type MatchDetails = {
 }
 
 type DailyMatchesMessage = {
-    readonly tournamentName: string;
+    readonly leagueName: string;
     readonly matches: MatchDetails[];
 }
 

@@ -31,6 +31,12 @@ class DotaTracker {
 
         this.dailyNotificationTime = null;
         this.dailyNotificationRef = null;
+
+        this.dotaApiClient.getMatchesToday().then(leagues => {
+            console.log(leagues);
+        }).catch(err => {
+            console.error(err);
+        });
     }
 
     setup = (config: ChannelConfig) => {
@@ -110,78 +116,18 @@ class DotaTracker {
     }
 
     private _postDailyNotification = () => {
-        // // Get the list of running tournaments
-        // Promise.all<RunningTournamentsResponse>([
-        //     this.tournamentsApi.getRunningTournaments({
-        //         sort: '-end_at'
-        //     }),
-        //     this.tournamentsApi.getUpcomingTournaments({
-        //         sort: 'begin_at'
-        //     })
-        // ]).then((upcomingTournaments) => {
-        //     const flattenedTournaments = upcomingTournaments.flat();
-        //     const beginningOfDay = moment.tz(this.config.timeZone).startOf("day");
-        //     const endOfDay = moment.tz(this.config.timeZone).endOf("day");
-
-        //     // TODO: Add alerted tiers to config
-        //     const filteredTournaments = flattenedTournaments
-        //         .filter(tournament => tournament.serie.tier == 'a' || tournament.serie.tier == 's')
-        //         .filter(tournament => {
-        //             const tournamentEnd = moment(tournament.end_at).tz(this.config.timeZone);
-        //             return tournamentEnd >= beginningOfDay;
-        //         });
-
-        //     const tournamentMessages: DailyMatchesMessage[] = filteredTournaments.map((tournament) => {
-        //         const filteredMatches = tournament.matches.filter(match => {
-        //             return moment(match.begin_at).tz(this.config.timeZone) <= endOfDay && (match.end_at === null || moment(match.end_at).tz(this.config.timeZone) >= beginningOfDay);
-        //         });
-
-        //         return {
-        //             tournamentName: `${tournament.league.name} - ${tournament.name}`,
-        //             matches: filteredMatches.map((match) => {
-        //                 // Try and get the first official, main and english stream
-        //                 let stream = match.streams_list.find(stream => stream.language === "en" && stream.official && stream.main);
-        //                 if (stream === null) {
-        //                     // If no stream can be found, find the first official && main stream
-        //                     stream = match.streams_list.find(stream => stream.official && stream.main);
-
-        //                     if (stream === null) {
-        //                         // If no stream can be found still, find the first official stream
-        //                         stream = match.streams_list.find(stream => stream.official);
-
-        //                         if (stream === null) {
-        //                             // If _STILL_ no stream can be found, get the first english stream...
-        //                             stream = match.streams_list.find(stream => stream.language === "en");
-
-        //                             if (stream === null) {
-        //                                 // If it's STILL STILL null, just accept the first one...
-        //                                 stream = match.streams_list[0];
-        //                             }
-        //                         }
-        //                     }
-        //                 }
-
-        //                 return {
-        //                     matchId: match.id,
-        //                     matchTitle: match.name,
-        //                     streamLink: stream ? stream.raw_url : "Unknown :person_shrugging:",
-        //                     startTime: moment(match.begin_at).tz(this.config.timeZone)
-        //                 }
-        //             })
-        //         };
-        //     });
-
-        //     if (tournamentMessages.length > 0) {
-        //         this.messageSender.postDailyMatches(tournamentMessages);
-        //     }
-        // }).catch((error) => {
-        //     console.log(`Something went wrong when retrieving tournaments... ${error}`);
-        // }).finally(() => {
-        //     // Setup next notification time to a day in the future
-        //     const nextNotificationTime = moment.tz(this.dailyNotificationTime, this.config.timeZone);
-        //     nextNotificationTime.add(1, "day");
-        //     this._setDailyNotificationTimeMoment(nextNotificationTime);
-        // });
+        // Get the list of running tournaments
+        this.dotaApiClient.getMatchesToday().then((leagues) => {
+            const beginningOfDay = moment.tz(this.config.timeZone).startOf("day");
+            const endOfDay = moment.tz(this.config.timeZone).endOf("day");
+        }).catch((error) => {
+            console.log(`Something went wrong when retrieving tournaments... ${error}`);
+        }).finally(() => {
+            // Setup next notification time to a day in the future
+            const nextNotificationTime = moment.tz(this.dailyNotificationTime, this.config.timeZone);
+            nextNotificationTime.add(1, "day");
+            this._setDailyNotificationTimeMoment(nextNotificationTime);
+        });
     }
 }
 

@@ -20,7 +20,7 @@ class MessageSender {
         const organisedMatches: Array<MatchDetails[]> = [];
         while (message.matches.length > 0) {
             const streamLink = message.matches[0].streamLink;
-            const matchesOnStream = message.matches.filter(match => match.streamLink == streamLink);
+            const matchesOnStream = message.matches.filter(match => match.streamLink === streamLink);
             organisedMatches.push(matchesOnStream);
             matchesOnStream.forEach((match) => {
                 message.matches.splice(message.matches.indexOf(match), 1);
@@ -36,7 +36,7 @@ class MessageSender {
             return matchesSetText;
         }).join('\n\n');
 
-        const discordMessage = await this.channel.send(`:robot: **${message.tournamentName} matches today!**\n` +
+        const discordMessage = await this.channel.send(`:robot: **${message.leagueName} matches today!**\n` +
             `${matchesText}`
         );
         discordMessage.suppressEmbeds(true);

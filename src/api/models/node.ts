@@ -1,4 +1,5 @@
-import { Team } from "discord.js";
+import { Stream } from './stream';
+import { Team } from './team';
 
 export enum NodeGroupType {
     Invalid = "INVALID",
@@ -29,6 +30,7 @@ export type Node = {
     isCompleted?: boolean;
     teamOne?: Team;
     teamTwo?: Team;
+    streams?: Stream[];
 };
 
 export type NodeGroup = {

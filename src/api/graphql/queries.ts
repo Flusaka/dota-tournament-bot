@@ -1,6 +1,6 @@
 export const LEAGUES_QUERY = `
-    query {
-        leagues(request: {tiers: DPC_LEAGUE, leagueEnded: false}) {
+    query Leagues($tiers: [LeagueTier], $leagueEnded: Boolean) {
+        leagues(request: {tiers: $tiers, leagueEnded: $leagueEnded}) {
             id
             displayName
             region
@@ -18,6 +18,12 @@ export const LEAGUES_QUERY = `
                     nodeType
                     hasStarted
                     isCompleted
+                    streams {
+                        id
+                        languageId
+                        name
+                        streamUrl
+                    }
                     teamOne {
                         id
                         name

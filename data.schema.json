@@ -1,0 +1,253 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "id": {
+                "type": "integer",
+                "minimum": 0
+            },
+            "name": {
+                "type": "string"
+            },
+            "displayName": {
+                "type": "string"
+            },
+            "description": {
+                "type": "string"
+            },
+            "region": {
+                "enum": [
+                    "NA",
+                    "SA",
+                    "EUROPE",
+                    "CIS",
+                    "SEA"
+                ]
+            },
+            "tier": {
+                "enum": [
+                    "MAJOR",
+                    "INTERNATIONAL",
+                    "DPC_LEAGUE"
+                ]
+            },
+            "nodeGroups": {
+                "type": "array",
+                "items": {
+                    "$ref": "#/$defs/nodeGroup"
+                }
+            }
+        },
+        "required": [
+            "id",
+            "name",
+            "description",
+            "displayName",
+            "region",
+            "tier",
+            "nodeGroups"
+        ]
+    },
+    "$defs": {
+        "round": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+        },
+        "time": {
+            "type": "integer",
+            "minimum": 1658691675000,
+            "maximum": 1658778075000
+        },
+        "nodeGroup": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nodeGroupType": {
+                    "enum": [
+                        "ORGANIZATIONAL",
+                        "ROUND_ROBIN",
+                        "SWISS",
+                        "BRACKET_SINGLE",
+                        "BRACKET_DOUBLE_SEED_LOSER",
+                        "BRACKET_DOUBLE_ALL_WINNER",
+                        "SHOWMATCH",
+                        "GSL"
+                    ]
+                },
+                "round": {
+                    "$ref": "#/$defs/round"
+                },
+                "nodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/node"
+                    }
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "nodeGroupType",
+                "round",
+                "nodes"
+            ]
+        },
+        "stream": {
+            "enum": [
+                {
+                    "id": 0,
+                    "languageId": "ENGLISH",
+                    "name": "Amazing Dota 2 Stream",
+                    "streamUrl": "https://twitch.tv/dreamleague"
+                }
+            ]
+        },
+        "team": {
+            "enum": [
+                {
+                    "id": 1,
+                    "name": "Thunder Awaken",
+                    "tag": "TA"
+                },
+                {
+                    "id": 2,
+                    "name": "PSG.LGD",
+                    "tag": "PSG.LGD"
+                },
+                {
+                    "id": 3,
+                    "name": "TSM FTX",
+                    "tag": "TSM"
+                },
+                {
+                    "id": 4,
+                    "name": "OG",
+                    "tag": "OG"
+                },
+                {
+                    "id": 5,
+                    "name": "beastcoast",
+                    "tag": "bc"
+                },
+                {
+                    "id": 6,
+                    "name": "Tundra Esports",
+                    "tag": "Tundra"
+                },
+                {
+                    "id": 7,
+                    "name": "Gaimin Gladiators",
+                    "tag": "GG"
+                },
+                {
+                    "id": 8,
+                    "name": "BOOM Esports",
+                    "tag": "BOOM"
+                },
+                {
+                    "id": 9,
+                    "name": "Evil Geniuses",
+                    "tag": "EG"
+                },
+                {
+                    "id": 10,
+                    "name": "Fnatic",
+                    "tag": "Fnatic"
+                },
+                {
+                    "id": 11,
+                    "name": "Team Spirit",
+                    "tag": "TSpirit"
+                },
+                {
+                    "id": 12,
+                    "name": "Team Aster",
+                    "tag": "Aster"
+                },
+                {
+                    "id": 13,
+                    "name": "Team Liquid",
+                    "tag": "Liquid"
+                },
+                {
+                    "id": 14,
+                    "name": "BetBoom Team",
+                    "tag": "BB Team"
+                },
+                {
+                    "id": 15,
+                    "name": "Royal Never Give Up",
+                    "tag": "RNG"
+                },
+                {
+                    "id": 16,
+                    "name": "Quincy Crew",
+                    "tag": "QC"
+                }
+            ]
+        },
+        "node": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "scheduledTime": {
+                    "$ref": "#/$defs/time"
+                },
+                "actualTime": {
+                    "$ref": "#/$defs/time"
+                },
+                "nodeType": {
+                    "enum": [
+                        "BEST_OF_ONE",
+                        "BEST_OF_THREE",
+                        "BEST_OF_FIVE",
+                        "BEST_OF_TWO"
+                    ]
+                },
+                "hasStarted": {
+                    "const": false
+                },
+                "isCompleted": {
+                    "const": false
+                },
+                "teamOne": {
+                    "type": "object",
+                    "$ref": "#/$defs/team"
+                },
+                "teamTwo": {
+                    "type": "object",
+                    "$ref": "#/$defs/team"
+                },
+                "streams": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/stream"
+                    }
+                }
+            },
+            "required": [
+                "id",
+                "scheduledTime",
+                "actualTime",
+                "nodeType",
+                "hasStarted",
+                "isCompleted",
+                "teamOne",
+                "teamTwo",
+                "streams"
+            ]
+        }
+    }
+}

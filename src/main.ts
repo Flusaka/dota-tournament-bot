@@ -4,6 +4,7 @@ import admin from 'firebase-admin';
 import BotController from './controller/bot_controller';
 import FirebaseDatabaseConnector from './database/firebase/firebase_database_connector';
 import DotaGraphQLClient from './api/graphql/graphql_api_client';
+// import FakeClient from './api/fake/fake_client';
 
 const app = express();
 const port = process.env.PORT || 3000;

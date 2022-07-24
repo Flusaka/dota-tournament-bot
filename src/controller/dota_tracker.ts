@@ -1,10 +1,11 @@
 import { TextChannel } from 'discord.js';
-import moment, { unitOfTime } from 'moment-timezone';
+import moment from 'moment-timezone';
 import MessageSender from "./message_sender";
-import { DailyMatchesMessage } from "./messages";
+import { DailyMatchesMessage, MatchDetails } from "./messages";
 import IDotaAPIClient from '../api/interfaces/api_client';
 import IDatabaseConnector from "../database/interfaces/database_connector";
 import ChannelConfig from "../database/models/channel_models";
+import { LeagueTier } from '../api/models/league';
 
 type TimerRef = ReturnType<typeof setTimeout>;
 
@@ -31,12 +32,6 @@ class DotaTracker {
 
         this.dailyNotificationTime = null;
         this.dailyNotificationRef = null;
-
-        this.dotaApiClient.getMatchesToday().then(leagues => {
-            console.log(leagues);
-        }).catch(err => {
-            console.error(err);
-        });
     }
 
     setup = (config: ChannelConfig) => {
@@ -117,9 +112,58 @@ class DotaTracker {
 
     private _postDailyNotification = () => {
         // Get the list of running tournaments
-        this.dotaApiClient.getMatchesToday().then((leagues) => {
-            const beginningOfDay = moment.tz(this.config.timeZone).startOf("day");
-            const endOfDay = moment.tz(this.config.timeZone).endOf("day");
+        this.dotaApiClient.getMatchesToday([LeagueTier.DPCLeague, LeagueTier.International, LeagueTier.Major]).then((leagues) => {
+            // Beginning of the "day" is at the time of the notifications to go out
+            const beginningOfDay = moment.tz(this.dailyNotificationTime, this.config.timeZone);
+            // End of the "day" is at the time the notifications will go out tomorrow
+            const endOfDay = moment(beginningOfDay);
+            endOfDay.add(1, 'day');
+
+            // Find all leagues with matches today
+            const leaguesWithMatchesToday = leagues.map(league => {
+                const nodeGroups = league.nodeGroups.map(group => {
+                    return {
+                        ...group,
+                        nodes: group.nodes.filter(node => {
+                            if (node.hasStarted || node.isCompleted) {
+                                return false;
+                            }
+
+                            const scheduledTime = moment.tz(node.scheduledTime, this.config.timeZone);
+                            return scheduledTime >= beginningOfDay && scheduledTime < endOfDay;
+                        })
+                    };
+                }).filter(group => group.nodes.length > 0);
+
+                return {
+                    ...league,
+                    nodeGroups
+                };
+            }).filter(league => league.nodeGroups.length > 0);
+
+            // Now go through each league and post the daily messages, split based on streams (i.e. node groups)
+            const messages = leaguesWithMatchesToday.map(league => {
+                const matches = league.nodeGroups.map(group => {
+                    const matchDetails: MatchDetails[] = group.nodes.map(node => {
+                        return {
+                            matchId: node.id,
+                            matchTitle: `${node.teamOne.name} vs ${node.teamTwo.name}`,
+                            startTime: moment.tz(node.scheduledTime, this.config.timeZone),
+                            streamLink: node.streams[0].streamUrl
+                        }
+                    });
+                    return matchDetails;
+                }).flat().sort((a, b) => a.startTime.diff(b.startTime));
+
+                const dailyMessage: DailyMatchesMessage = {
+                    leagueName: league.displayName,
+                    matches
+                };
+
+                return dailyMessage;
+            });
+
+            this.messageSender.postDailyMatches(messages);
         }).catch((error) => {
             console.log(`Something went wrong when retrieving tournaments... ${error}`);
         }).finally(() => {

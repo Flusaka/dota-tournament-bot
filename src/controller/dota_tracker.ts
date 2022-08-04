@@ -1,11 +1,12 @@
 import { TextChannel } from 'discord.js';
 import moment from 'moment-timezone';
 import MessageSender from "./message_sender";
-import { DailyMatchesMessage, MatchDetails } from "./messages";
+import { DailyMatchesMessage, MatchDetails } from "./types/messages";
 import IDotaAPIClient from '../api/interfaces/api_client';
 import IDatabaseConnector from "../database/interfaces/database_connector";
 import ChannelConfig from "../database/models/channel_models";
 import { LeagueTier } from '../api/models/league';
+import IMessageSender from './interfaces/message_sender';
 
 type TimerRef = ReturnType<typeof setTimeout>;
 
@@ -16,7 +17,7 @@ class DotaTracker {
 
     private databaseConnector: IDatabaseConnector;
 
-    private messageSender: MessageSender;
+    private messageSender: IMessageSender;
 
     private dailyNotificationTime: moment.Moment;
 
@@ -129,7 +130,7 @@ class DotaTracker {
                                 return false;
                             }
 
-                            const scheduledTime = moment.tz(node.scheduledTime, this.config.timeZone);
+                            const scheduledTime = moment.tz(node.scheduledTime * 1000, this.config.timeZone);
                             return scheduledTime >= beginningOfDay && scheduledTime < endOfDay;
                         })
                     };
@@ -145,11 +146,16 @@ class DotaTracker {
             const messages = leaguesWithMatchesToday.map(league => {
                 const matches = league.nodeGroups.map(group => {
                     const matchDetails: MatchDetails[] = group.nodes.map(node => {
+                        let streamUrl = "Unknown";
+                        if (node.streams.length > 0) {
+                            streamUrl = node.streams[0].streamUrl;
+                        }
+
                         return {
                             matchId: node.id,
                             matchTitle: `${node.teamOne.name} vs ${node.teamTwo.name}`,
-                            startTime: moment.tz(node.scheduledTime, this.config.timeZone),
-                            streamLink: node.streams[0].streamUrl
+                            startTime: moment.tz(node.scheduledTime * 1000, this.config.timeZone),
+                            streamLink: streamUrl
                         }
                     });
                     return matchDetails;

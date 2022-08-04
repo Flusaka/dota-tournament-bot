@@ -1,7 +1,8 @@
 import { TextChannel } from 'discord.js';
-import { DailyMatchesMessage, MatchDetails } from './messages';
+import IMessageSender from './interfaces/message_sender';
+import { DailyMatchesMessage, MatchDetails } from './types/messages';
 
-class MessageSender {
+class MessageSender implements IMessageSender {
     private channel: TextChannel;
 
     constructor(channel: TextChannel) {

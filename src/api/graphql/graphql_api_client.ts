@@ -16,8 +16,9 @@ class DotaGraphQLClient implements IDotaAPIClient {
             this._query(LEAGUES_QUERY, {
                 tiers,
                 leagueEnded: false
+            }).then(result => {
+                resolve(result['leagues']);
             })
-                .then(result => resolve(result['leagues']))
                 .catch(error => reject(error));
         });
     }

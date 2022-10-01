@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/flusaka/dota-tournament-bot/command"
 )
 
 var (
@@ -11,6 +12,13 @@ var (
 )
 
 type DotaBot struct {
+	commandParser *command.Parser
+}
+
+func NewDotaBot(commandParser *command.Parser) *DotaBot {
+	b := new(DotaBot)
+	b.commandParser = commandParser
+	return b
 }
 
 func (b *DotaBot) Initialise() error {
@@ -20,7 +28,19 @@ func (b *DotaBot) Initialise() error {
 		return err
 	}
 
-	dg.AddHandler(onMessage)
+	b.commandParser.Register("start", func(params ...string) {
+		fmt.Println("Start command parsed! Num params:", len(params))
+	})
+
+	dg.AddHandler(func(s *discordgo.Session, m *discordgo.MessageCreate) {
+		if m.Author.Bot {
+			return
+		}
+
+		if !b.commandParser.Parse(m.Content) {
+			fmt.Println("Ignoring unparsed message")
+		}
+	})
 	dg.Identify.Intents = discordgo.IntentsGuildMessages
 
 	err = dg.Open()
@@ -28,13 +48,8 @@ func (b *DotaBot) Initialise() error {
 }
 
 func (b *DotaBot) Shutdown() {
-	dg.Close()
-}
-
-func onMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
-	if m.Author.Bot {
-		return
+	err := dg.Close()
+	if err != nil {
+		fmt.Println("Error when closing Discord session", err)
 	}
-
-	fmt.Println("Message received", m.Author.Username, m.Content)
 }

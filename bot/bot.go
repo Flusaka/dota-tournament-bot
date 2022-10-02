@@ -7,12 +7,9 @@ import (
 	"github.com/flusaka/dota-tournament-bot/command"
 )
 
-var (
-	dg *discordgo.Session
-)
-
 type DotaBot struct {
-	commandParser *command.Parser
+	commandParser  *command.Parser
+	discordSession *discordgo.Session
 }
 
 func NewDotaBot(commandParser *command.Parser) *DotaBot {
@@ -44,11 +41,14 @@ func (b *DotaBot) Initialise() error {
 	dg.Identify.Intents = discordgo.IntentsGuildMessages
 
 	err = dg.Open()
+	if err == nil {
+		b.discordSession = dg
+	}
 	return err
 }
 
 func (b *DotaBot) Shutdown() {
-	err := dg.Close()
+	err := b.discordSession.Close()
 	if err != nil {
 		fmt.Println("Error when closing Discord session", err)
 	}

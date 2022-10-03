@@ -25,8 +25,14 @@ func (b *DotaBot) Initialise() error {
 		return err
 	}
 
-	b.commandParser.Register("start", func(params ...string) {
-		fmt.Println("Start command parsed! Num params:", len(params))
+	b.commandParser.Register("start", func(params *command.ParseParameters) {
+		fmt.Println("Starting bot on channel", params.ChannelID, "with", len(params.Parameters), "parameters")
+
+		// Open channel???
+	})
+
+	b.commandParser.Register("stop", func(params *command.ParseParameters) {
+
 	})
 
 	dg.AddHandler(func(s *discordgo.Session, m *discordgo.MessageCreate) {
@@ -34,13 +40,15 @@ func (b *DotaBot) Initialise() error {
 			return
 		}
 
-		if !b.commandParser.Parse(m.Content) {
+		if !b.commandParser.Parse(m.Message) {
 			fmt.Println("Ignoring unparsed message")
 		}
 	})
+
 	dg.Identify.Intents = discordgo.IntentsGuildMessages
 
 	err = dg.Open()
+
 	if err == nil {
 		b.discordSession = dg
 	}

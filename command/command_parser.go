@@ -1,32 +1,33 @@
 package command
 
-import "strings"
+import (
+	"github.com/bwmarrin/discordgo"
+	"strings"
+)
 
-type ParseCallback func(params ...string)
+type ParseParameters struct {
+	ChannelID  string
+	Parameters []string
+}
+
+type ParseCallback func(params *ParseParameters)
 
 type Parser struct {
 	commandKeyword string
+	callbacks      map[string]ParseCallback
 }
 
-var (
-	callbacks map[string]ParseCallback
-)
-
 func NewParser(commandKeyword string) *Parser {
-	cp := &Parser{commandKeyword}
-	cp.initialise()
+	cp := &Parser{commandKeyword, make(map[string]ParseCallback)}
 	return cp
 }
 
-func (cp *Parser) initialise() {
-	callbacks = make(map[string]ParseCallback)
-}
-
 func (cp *Parser) Register(commandName string, callback ParseCallback) {
-	callbacks[commandName] = callback
+	cp.callbacks[commandName] = callback
 }
 
-func (cp *Parser) Parse(command string) bool {
+func (cp *Parser) Parse(message *discordgo.Message) bool {
+	command := message.Content
 	if !strings.HasPrefix(command, cp.commandKeyword) {
 		return false
 	}
@@ -43,8 +44,9 @@ func (cp *Parser) Parse(command string) bool {
 	command = parts[0]
 	params := parts[1:]
 
-	if val, ok := callbacks[command]; ok {
-		val(params...)
+	if val, ok := cp.callbacks[command]; ok {
+		parameters := &ParseParameters{message.ChannelID, params}
+		val(parameters)
 		return true
 	}
 

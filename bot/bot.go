@@ -18,8 +18,8 @@ func NewDotaBot(commandParser *command.Parser) *DotaBot {
 	return b
 }
 
-func (b *DotaBot) Initialise() error {
-	dg, err := discordgo.New("Bot ODk4Njc0ODgxMTIwNTY3MzI3.Gfyw1i.R3cVZteQih5BWhVoO7lyRF4S9UXCGvqP4jfK-M")
+func (b *DotaBot) Initialise(token string) error {
+	dg, err := discordgo.New("Bot " + token)
 	if err != nil {
 		fmt.Println("Error creating Discord session", err)
 		return err
@@ -51,6 +51,8 @@ func (b *DotaBot) Initialise() error {
 
 	if err == nil {
 		b.discordSession = dg
+	} else {
+		fmt.Println("Error when opening session", err)
 	}
 	return err
 }

@@ -6,8 +6,16 @@ type DotaBotChannel struct {
 	config *models.ChannelConfig
 }
 
-func NewDotaBotChannel(config *models.ChannelConfig) *DotaBotChannel {
+func NewDotaBotChannel(channelID string) *DotaBotChannel {
 	return &DotaBotChannel{
-		config,
+		models.NewChannelConfig(channelID),
 	}
+}
+
+func (bc *DotaBotChannel) Start() {
+	bc.config.Upsert()
+}
+
+func (bc *DotaBotChannel) Stop() {
+	bc.config.Delete()
 }

@@ -1,6 +1,9 @@
 package bot
 
-import "github.com/flusaka/dota-tournament-bot/models"
+import (
+	"github.com/flusaka/dota-tournament-bot/models"
+	"time"
+)
 
 type DotaBotChannel struct {
 	config *models.ChannelConfig
@@ -24,4 +27,16 @@ func (bc *DotaBotChannel) Start() {
 
 func (bc *DotaBotChannel) Stop() {
 	bc.config.Delete()
+}
+
+func (bc *DotaBotChannel) UpdateTimezone(timezone string) error {
+	_, err := time.LoadLocation(timezone)
+	if err != nil {
+		return err
+	}
+	
+	bc.config.Timezone = timezone
+	bc.config.Upsert()
+
+	return nil
 }

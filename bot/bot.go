@@ -2,7 +2,6 @@ package bot
 
 import (
 	"fmt"
-
 	"github.com/bwmarrin/discordgo"
 	"github.com/flusaka/dota-tournament-bot/command"
 	"github.com/flusaka/dota-tournament-bot/models"
@@ -49,7 +48,20 @@ func (b *DotaBot) Initialise(token string) error {
 			channel.Start()
 			b.channels[params.ChannelID] = channel
 		}
+	})
 
+	b.commandParser.Register("timezone", func(params *command.ParseParameters) {
+		if channel, ok := b.channels[params.ChannelID]; ok {
+			if len(params.Parameters) > 0 {
+				timezone := params.Parameters[0]
+				err := channel.UpdateTimezone(timezone)
+				if err != nil {
+					b.discordSession.ChannelMessageSend(params.ChannelID, "Invalid timezone specified")
+				}
+			}
+		} else {
+			b.discordSession.ChannelMessageSend(params.ChannelID, "Channel is not active yet! Please type \"!dotabot start\" before running other commands")
+		}
 	})
 
 	b.commandParser.Register("stop", func(params *command.ParseParameters) {

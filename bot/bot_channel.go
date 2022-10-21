@@ -12,6 +12,12 @@ func NewDotaBotChannel(channelID string) *DotaBotChannel {
 	}
 }
 
+func NewDotaBotChannelWithConfig(config *models.ChannelConfig) *DotaBotChannel {
+	return &DotaBotChannel{
+		config,
+	}
+}
+
 func (bc *DotaBotChannel) Start() {
 	bc.config.Upsert()
 }

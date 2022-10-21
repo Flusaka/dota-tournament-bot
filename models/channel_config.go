@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/kamva/mgm/v3"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type ChannelConfig struct {
@@ -17,6 +18,15 @@ func NewChannelConfig(channelID string) *ChannelConfig {
 		ChannelID: channelID,
 		Timezone:  "Europe/London",
 	}
+}
+
+func FetchAllConfigs() ([]*ChannelConfig, error) {
+	configs := make([]*ChannelConfig, 0)
+	err := mgm.Coll(&ChannelConfig{}).SimpleFind(&configs, bson.D{})
+	if err != nil {
+		return nil, err
+	}
+	return configs, nil
 }
 
 func (cc *ChannelConfig) Upsert() {

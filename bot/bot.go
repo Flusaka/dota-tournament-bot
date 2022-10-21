@@ -5,6 +5,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/flusaka/dota-tournament-bot/command"
+	"github.com/flusaka/dota-tournament-bot/models"
 )
 
 type DotaBot struct {
@@ -21,6 +22,17 @@ func NewDotaBot(commandParser *command.Parser) *DotaBot {
 }
 
 func (b *DotaBot) Initialise(token string) error {
+	configs, err := models.FetchAllConfigs()
+	if err != nil {
+		fmt.Println("Could not retrieve configs", err)
+	}
+
+	// Setup existing bot channels
+	for _, config := range configs {
+		fmt.Println("Restarting channel on ID", config.ChannelID)
+		b.channels[config.ChannelID] = NewDotaBotChannelWithConfig(config)
+	}
+
 	dg, err := discordgo.New("Bot " + token)
 	if err != nil {
 		fmt.Println("Error creating Discord session", err)
@@ -37,8 +49,6 @@ func (b *DotaBot) Initialise(token string) error {
 			channel.Start()
 			b.channels[params.ChannelID] = channel
 		}
-
-		// Open channel???
 
 	})
 

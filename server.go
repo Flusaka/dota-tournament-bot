@@ -1,8 +1,8 @@
 package main
 
 import (
-	"flag"
 	"fmt"
+	"github.com/flusaka/dota-tournament-bot/stratz"
 	"github.com/kamva/mgm/v3"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"os"
@@ -14,24 +14,36 @@ import (
 )
 
 func main() {
-	discordToken := flag.String("t", "", "The token for the Discord Bot")
-	mongoUri := flag.String("db", "", "The URI for the MongoDB database instance")
-	flag.Parse()
-	if *discordToken == "" {
+	discordToken := os.Getenv("discordToken")
+	mongoUri := os.Getenv("mongoUri")
+	stratzToken := os.Getenv("stratzToken")
+
+	if discordToken == "" {
 		fmt.Println("No Discord token specified")
+		return
+	}
+	if mongoUri == "" {
+		fmt.Println("No Mongo URI specified")
+		return
+	}
+	if stratzToken == "" {
+		fmt.Println("No Stratz token specified")
 		return
 	}
 
 	// Initialise Mongo
-	err := mgm.SetDefaultConfig(nil, "bot", options.Client().ApplyURI(*mongoUri))
+	err := mgm.SetDefaultConfig(nil, "bot", options.Client().ApplyURI(mongoUri))
 	if err != nil {
 		fmt.Println("Error connecting to MongoDB")
 		return
 	}
 
+	stratzClient := stratz.NewClient(stratzToken)
+	stratzClient.Initialise()
+
 	cp := command.NewParser("!dotabot")
 	b := bot.NewDotaBot(cp)
-	err = b.Initialise(*discordToken)
+	err = b.Initialise(discordToken)
 	if err != nil {
 		fmt.Println("Error starting the Discord bot session")
 		return

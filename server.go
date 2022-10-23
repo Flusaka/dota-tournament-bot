@@ -14,9 +14,9 @@ import (
 )
 
 func main() {
-	discordToken := os.Getenv("discordToken")
-	mongoUri := os.Getenv("mongoUri")
-	stratzToken := os.Getenv("stratzToken")
+	discordToken := os.Getenv("DISCORD_TOKEN")
+	mongoUri := os.Getenv("MONGO_URI")
+	stratzToken := os.Getenv("STRATZ_TOKEN")
 
 	if discordToken == "" {
 		fmt.Println("No Discord token specified")

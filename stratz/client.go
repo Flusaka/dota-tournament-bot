@@ -41,3 +41,7 @@ func (c *Client) Initialise() {
 func (c *Client) GetLeagues(tiers []schema.LeagueTier, finished bool) (*schema.GetLeaguesResponse, error) {
 	return schema.GetLeagues(context.Background(), c.gqlClient, tiers, finished)
 }
+
+func (c *Client) GetActiveLeagues(tiers []schema.LeagueTier) (*schema.GetLeaguesResponse, error) {
+	return c.GetLeagues(tiers, false)
+}

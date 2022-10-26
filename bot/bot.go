@@ -5,17 +5,20 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/flusaka/dota-tournament-bot/command"
 	"github.com/flusaka/dota-tournament-bot/models"
+	"github.com/flusaka/dota-tournament-bot/stratz"
 )
 
 type DotaBot struct {
 	commandParser  *command.Parser
+	stratzClient   *stratz.Client
 	discordSession *discordgo.Session
 	channels       map[string]*DotaBotChannel
 }
 
-func NewDotaBot(commandParser *command.Parser) *DotaBot {
+func NewDotaBot(commandParser *command.Parser, stratzClient *stratz.Client) *DotaBot {
 	b := new(DotaBot)
 	b.commandParser = commandParser
+	b.stratzClient = stratzClient
 	b.channels = make(map[string]*DotaBotChannel)
 	return b
 }
@@ -43,7 +46,7 @@ func (b *DotaBot) Initialise(token string) error {
 		if _, ok := b.channels[params.ChannelID]; ok {
 			fmt.Println("Bot already started in this channel")
 		} else {
-			fmt.Println("Starting bot on channel", params.ChannelID, "with", len(params.Parameters), "parameters")
+			fmt.Println("Starting bot on channel", params.ChannelID)
 			channel := NewDotaBotChannel(params.ChannelID)
 			channel.Start()
 			b.channels[params.ChannelID] = channel
@@ -65,8 +68,8 @@ func (b *DotaBot) Initialise(token string) error {
 	})
 
 	b.commandParser.Register("stop", func(params *command.ParseParameters) {
-		fmt.Println("Stopping bot on channel", params.ChannelID)
 		if channel, ok := b.channels[params.ChannelID]; ok {
+			fmt.Println("Stopping bot on channel", params.ChannelID)
 			channel.Stop()
 		}
 		delete(b.channels, params.ChannelID)

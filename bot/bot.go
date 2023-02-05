@@ -6,6 +6,8 @@ import (
 	"github.com/flusaka/dota-tournament-bot/command"
 	"github.com/flusaka/dota-tournament-bot/models"
 	"github.com/flusaka/dota-tournament-bot/stratz"
+	"github.com/flusaka/dota-tournament-bot/stratz/schema"
+	"sort"
 )
 
 type DotaBot struct {
@@ -64,6 +66,55 @@ func (b *DotaBot) Initialise(token string) error {
 			}
 		} else {
 			b.discordSession.ChannelMessageSend(params.ChannelID, "Channel is not active yet! Please type \"!dotabot start\" before running other commands")
+		}
+	})
+
+	b.commandParser.Register("daily", func(params *command.ParseParameters) {
+		if channel, ok := b.channels[params.ChannelID]; ok {
+			if len(params.Parameters) > 0 {
+				timeString := params.Parameters[0]
+				err := channel.UpdateDailyMessageTime(timeString)
+				if err != nil {
+					b.discordSession.ChannelMessageSend(params.ChannelID, "Invalid time format")
+				}
+			}
+		} else {
+			b.discordSession.ChannelMessageSend(params.ChannelID, "Channel is not active yet! Please type \"!dotabot start\" before running other commands")
+		}
+	})
+
+	b.commandParser.Register("today", func(params *command.ParseParameters) {
+		if channel, ok := b.channels[params.ChannelID]; ok {
+			var tiers = []schema.LeagueTier{schema.LeagueTierDpcLeague}
+			matches, err := b.stratzClient.GetMatchesInActiveLeagues(tiers)
+			if err != nil {
+				b.discordSession.ChannelMessageSend(params.ChannelID, "Failed to get active leagues")
+			} else {
+				var message = ""
+				// First, let's sort the matches
+				sort.Slice(matches, func(i, j int) bool {
+					return matches[i].ScheduledTime < matches[j].ScheduledTime
+				})
+
+				// TODO: Now, let's split into groups based on the league it's for
+
+				for _, match := range matches {
+					// TODO: Check actual time if match already completed
+					isWithinDay, convertedTime := channel.IsTimeWithinDay(match.ScheduledTime)
+					if !isWithinDay {
+						continue
+					}
+					message += match.TeamOne.Name + " vs " + match.TeamTwo.Name + "(" + convertedTime.String() + ")\n"
+				}
+				if len(message) > 0 {
+					_, err := b.discordSession.ChannelMessageSend(params.ChannelID, message)
+					if err != nil {
+						fmt.Println("Error sending message to", params.ChannelID, err.Error())
+					}
+				} else {
+					b.discordSession.ChannelMessageSend(params.ChannelID, "No games today!")
+				}
+			}
 		}
 	})
 

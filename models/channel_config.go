@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/kamva/mgm/v3"
 	"go.mongodb.org/mongo-driver/bson"
@@ -9,8 +10,9 @@ import (
 
 type ChannelConfig struct {
 	mgm.DefaultModel `bson:",inline"`
-	ChannelID        string `bson:"channelID"`
-	Timezone         string `bson:"tz"`
+	ChannelID        string    `bson:"channelID"`
+	Timezone         string    `bson:"tz"`
+	DailyMessageTime time.Time `bson:"dailyMessageTime, omitempty"`
 }
 
 func NewChannelConfig(channelID string) *ChannelConfig {

@@ -8,6 +8,7 @@ import (
 	"github.com/flusaka/dota-tournament-bot/stratz"
 	"github.com/flusaka/dota-tournament-bot/stratz/schema"
 	"sort"
+	"time"
 )
 
 type DotaBot struct {
@@ -104,7 +105,7 @@ func (b *DotaBot) Initialise(token string) error {
 					if !isWithinDay {
 						continue
 					}
-					message += match.TeamOne.Name + " vs " + match.TeamTwo.Name + "(" + convertedTime.String() + ")\n"
+					message += match.TeamOne.Name + " vs " + match.TeamTwo.Name + " (" + convertedTime.Format(time.Kitchen) + ")\n"
 				}
 				if len(message) > 0 {
 					_, err := b.discordSession.ChannelMessageSend(params.ChannelID, message)

@@ -31,8 +31,15 @@ func FetchAllConfigs() ([]*ChannelConfig, error) {
 	return configs, nil
 }
 
-func (cc *ChannelConfig) Upsert() {
-	err := mgm.Coll(cc).Update(cc, mgm.UpsertTrueOption())
+func (cc *ChannelConfig) Create() {
+	err := mgm.Coll(cc).Create(cc)
+	if err != nil {
+		fmt.Println("Error when saving channel config", err)
+	}
+}
+
+func (cc *ChannelConfig) Update() {
+	err := mgm.Coll(cc).Update(cc)
 	if err != nil {
 		fmt.Println("Error when saving channel config", err)
 	}

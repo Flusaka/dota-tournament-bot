@@ -3,7 +3,6 @@ package bot
 import (
 	"fmt"
 	"github.com/bwmarrin/discordgo"
-	"github.com/flusaka/dota-tournament-bot/command"
 	"github.com/flusaka/dota-tournament-bot/models"
 	"github.com/flusaka/dota-tournament-bot/stratz"
 	"github.com/flusaka/dota-tournament-bot/stratz/schema"
@@ -216,15 +215,13 @@ var (
 )
 
 type DotaBot struct {
-	commandParser  *command.Parser
 	stratzClient   *stratz.Client
 	discordSession *discordgo.Session
 	channels       map[string]*DotaBotChannel
 }
 
-func NewDotaBot(commandParser *command.Parser, stratzClient *stratz.Client) *DotaBot {
+func NewDotaBot(stratzClient *stratz.Client) *DotaBot {
 	b := new(DotaBot)
-	b.commandParser = commandParser
 	b.stratzClient = stratzClient
 	b.channels = make(map[string]*DotaBotChannel)
 	return b
@@ -264,16 +261,6 @@ func (b *DotaBot) Initialise(token string) error {
 	//})
 	//
 
-	dg.AddHandler(func(s *discordgo.Session, m *discordgo.MessageCreate) {
-		if m.Author.Bot {
-			return
-		}
-
-		if !b.commandParser.Parse(m.Message) {
-			fmt.Println("Ignoring unparsed message")
-		}
-	})
-
 	dg.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		//fmt.Println(i.ApplicationCommandData().Name)
 		if command, ok := handlers[i.ApplicationCommandData().Name]; ok {
@@ -288,7 +275,7 @@ func (b *DotaBot) Initialise(token string) error {
 	if err == nil {
 		b.discordSession = dg
 		for _, command := range commands {
-			cmd, err := b.discordSession.ApplicationCommandCreate(b.discordSession.State.User.ID, "328238345098625024", command)
+			cmd, err := b.discordSession.ApplicationCommandCreate(b.discordSession.State.User.ID, "", command)
 			if err != nil {
 				fmt.Println("Error creating command", err)
 			} else {
@@ -303,13 +290,13 @@ func (b *DotaBot) Initialise(token string) error {
 
 func (b *DotaBot) Shutdown() {
 	// Remove all registered commands
-	registeredCommands, err := b.discordSession.ApplicationCommands(b.discordSession.State.User.ID, "328238345098625024")
+	registeredCommands, err := b.discordSession.ApplicationCommands(b.discordSession.State.User.ID, "")
 	if err != nil {
 		fmt.Println("Error when closing Discord session", err)
 	}
 
 	for _, command := range registeredCommands {
-		b.discordSession.ApplicationCommandDelete(b.discordSession.State.User.ID, "328238345098625024", command.ID)
+		b.discordSession.ApplicationCommandDelete(b.discordSession.State.User.ID, "", command.ID)
 	}
 
 	err = b.discordSession.Close()

@@ -10,7 +10,6 @@ import (
 	"syscall"
 
 	"github.com/flusaka/dota-tournament-bot/bot"
-	"github.com/flusaka/dota-tournament-bot/command"
 )
 
 func main() {
@@ -41,8 +40,7 @@ func main() {
 	stratzClient := stratz.NewClient(stratzToken)
 	stratzClient.Initialise()
 
-	cp := command.NewParser("!dotabot")
-	b := bot.NewDotaBot(cp, stratzClient)
+	b := bot.NewDotaBot(stratzClient)
 	err = b.Initialise(discordToken)
 	if err != nil {
 		fmt.Println("Error starting the Discord bot session")

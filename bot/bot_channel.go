@@ -35,7 +35,7 @@ func NewDotaBotChannelWithConfig(config *models.ChannelConfig) *DotaBotChannel {
 }
 
 func (bc *DotaBotChannel) Start() {
-	bc.config.Upsert()
+	bc.config.Create()
 }
 
 func (bc *DotaBotChannel) Stop() {
@@ -49,7 +49,7 @@ func (bc *DotaBotChannel) UpdateTimezone(timezone string) error {
 	}
 
 	bc.config.Timezone = timezone
-	bc.config.Upsert()
+	bc.config.Update()
 
 	return nil
 }
@@ -72,7 +72,7 @@ func (bc *DotaBotChannel) UpdateDailyMessageTime(timeString string) error {
 	dailyTimeUtc := dailyTime.UTC()
 
 	bc.config.DailyMessageTime = dailyTimeUtc
-	bc.config.Upsert()
+	bc.config.Update()
 
 	return nil
 }

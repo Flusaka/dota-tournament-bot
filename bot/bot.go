@@ -84,36 +84,92 @@ func (b *DotaBot) Initialise(token string) error {
 		}
 	})
 
+	// TODO: Eventually this won't be an explicit command, or at least it will also be calculated/sent based on the notification time of a configured channel
 	b.commandParser.Register("today", func(params *command.ParseParameters) {
 		if channel, ok := b.channels[params.ChannelID]; ok {
+			// TODO: Make this configurable in the channel
 			var tiers = []schema.LeagueTier{schema.LeagueTierDpcLeague}
-			matches, err := b.stratzClient.GetMatchesInActiveLeagues(tiers)
+			leagues, err := b.stratzClient.GetActiveLeagues(tiers)
 			if err != nil {
 				b.discordSession.ChannelMessageSend(params.ChannelID, "Failed to get active leagues")
 			} else {
-				var message = ""
-				// First, let's sort the matches
-				sort.Slice(matches, func(i, j int) bool {
-					return matches[i].ScheduledTime < matches[j].ScheduledTime
-				})
+				// TODO: Definitely ways to improve and optimise this code :shrug:
+				// Could probably cache these things every X amount of time
+				for _, league := range leagues {
+					var allMatches []schema.GetLeaguesLeaguesLeagueTypeNodeGroupsLeagueNodeGroupTypeNodesLeagueNodeType
+					for _, nodeGroup := range league.NodeGroups {
+						allMatches = append(allMatches, nodeGroup.Nodes...)
+					}
 
-				// TODO: Now, let's split into groups based on the league it's for
+					// First, let's remove all matches outside of today
+					var matches []schema.GetLeaguesLeaguesLeagueTypeNodeGroupsLeagueNodeGroupTypeNodesLeagueNodeType
+					for _, match := range allMatches {
+						// TODO: Check actual time if match already completed
+						isWithinDay := channel.IsTimeWithinDay(match.ScheduledTime)
+						if !isWithinDay {
+							continue
+						}
+						matches = append(matches, match)
+					}
 
-				for _, match := range matches {
-					// TODO: Check actual time if match already completed
-					isWithinDay, convertedTime := channel.IsTimeWithinDay(match.ScheduledTime)
-					if !isWithinDay {
+					// If there's no matches today for this league, skip over
+					if len(matches) == 0 {
 						continue
 					}
-					message += match.TeamOne.Name + " vs " + match.TeamTwo.Name + " (" + convertedTime.Format(time.Kitchen) + ")\n"
-				}
-				if len(message) > 0 {
-					_, err := b.discordSession.ChannelMessageSend(params.ChannelID, message)
-					if err != nil {
-						fmt.Println("Error sending message to", params.ChannelID, err.Error())
+
+					// Then, let's sort the matches by start time
+					sort.Slice(matches, func(i, j int) bool {
+						// TODO: Check actual time if match already completed
+						return matches[i].ScheduledTime < matches[j].ScheduledTime
+					})
+
+					// Finally, create a map of streams to matches
+					streamMatchesMap := make(map[string][]schema.GetLeaguesLeaguesLeagueTypeNodeGroupsLeagueNodeGroupTypeNodesLeagueNodeType)
+					for _, match := range matches {
+						// Get English stream, if exists, if not :shrug:
+						var foundStream *schema.GetLeaguesLeaguesLeagueTypeNodeGroupsLeagueNodeGroupTypeNodesLeagueNodeTypeStreamsLeagueStreamType
+						for _, stream := range match.Streams {
+							if stream.LanguageId == schema.LanguageEnglish {
+								foundStream = &stream
+								break
+							}
+						}
+
+						if foundStream != nil {
+							streamMatchesMap[foundStream.StreamUrl] = append(streamMatchesMap[foundStream.StreamUrl], match)
+						}
 					}
-				} else {
-					b.discordSession.ChannelMessageSend(params.ChannelID, "No games today!")
+
+					// If the map is empty, we couldn't find a relevant stream, skip over
+					if len(streamMatchesMap) == 0 {
+						continue
+					}
+
+					// Build up the message
+					message := league.DisplayName + " games today!\n\n"
+					for streamUrl, streamMatches := range streamMatchesMap {
+						message += "Games on: " + streamUrl + "\n\n"
+						for _, streamMatch := range streamMatches {
+							convertedTime, err := channel.GetTimeInZone(streamMatch.ScheduledTime)
+							if err != nil {
+								continue
+							}
+							message += streamMatch.TeamOne.Name + " vs " + streamMatch.TeamTwo.Name + " - " + convertedTime.Format(time.Kitchen) + "\n"
+						}
+					}
+
+					if len(message) > 0 {
+						// Send the message and get the Discord message struct back
+						discordMsg, err := b.discordSession.ChannelMessageSend(params.ChannelID, message)
+						if err != nil {
+							fmt.Println("Error sending message to", params.ChannelID, err.Error())
+						} else {
+							// Suppress the embeds on the message from the stream links
+							editMessage := discordgo.NewMessageEdit(params.ChannelID, discordMsg.ID)
+							editMessage.Flags |= discordgo.MessageFlagsSuppressEmbeds
+							b.discordSession.ChannelMessageEditComplex(editMessage)
+						}
+					}
 				}
 			}
 		}

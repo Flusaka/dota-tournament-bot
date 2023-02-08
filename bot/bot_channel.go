@@ -77,16 +77,36 @@ func (bc *DotaBotChannel) UpdateDailyMessageTime(timeString string) error {
 	return nil
 }
 
-func (bc *DotaBotChannel) IsTimeWithinDay(timestamp int64) (bool, time.Time) {
+func (bc *DotaBotChannel) getParsingZone() (*time.Location, error) {
 	activeTimeZone, err := time.LoadLocation(bc.config.Timezone)
-	convertedTime := time.Now()
 	if err != nil {
-		return false, convertedTime
+		return nil, err
 	}
 	currentTime := time.Now().In(activeTimeZone)
-	parsingZone := time.FixedZone(currentTime.Zone())
+	return time.FixedZone(currentTime.Zone()), nil
+}
+
+func (bc *DotaBotChannel) GetTimeInZone(timestamp int64) (time.Time, error) {
+	parsingZone, err := bc.getParsingZone()
+	if err != nil {
+		return time.Now(), err
+	}
+	return time.Unix(timestamp, 0).In(parsingZone), nil
+}
+
+func (bc *DotaBotChannel) IsTimeWithinDay(timestamp int64) bool {
+	// This is a bit awkward, need to think of a better way to break down this logic
+	parsingZone, err := bc.getParsingZone()
+	if err != nil {
+		return false
+	}
+	convertedTime, err := bc.GetTimeInZone(timestamp)
+	if err != nil {
+		return false
+	}
+
+	currentTime := time.Now()
 	startOfDay := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 0, 0, 0, 0, parsingZone)
 	endOfDay := startOfDay.Add(time.Hour * 24).Add(-time.Second)
-	convertedTime = time.Unix(timestamp, 0).In(parsingZone)
-	return convertedTime.After(startOfDay) && convertedTime.Before(endOfDay), convertedTime
+	return convertedTime.After(startOfDay) && convertedTime.Before(endOfDay)
 }

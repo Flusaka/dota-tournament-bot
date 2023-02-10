@@ -12,11 +12,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3.3.0
       - name: Build image
         run: docker build -t dota-tournament-bot .
       - name: Install doctl
-        uses: digitalocean/action-doctl@v2
+        uses: digitalocean/action-doctl@v2.3.0
         with:
           token: ${{ secrets.DO_ACCESS_TOKEN }}
       - name: Login to DO Container Registry

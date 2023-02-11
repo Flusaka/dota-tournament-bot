@@ -2,10 +2,6 @@ name: Build and publish docker image
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Image version'
-        required: true
 
 jobs:
   build_and_push:
@@ -22,6 +18,6 @@ jobs:
       - name: Login to DO Container Registry
         run: doctl registry login --expiry-seconds 600
       - name: Tag image
-        run: docker tag dota-tournament-bot registry.digitalocean.com/${{secrets.DO_REGISTRY_NAME}}/dota-tournament-bot:${{github.event.inputs.version}}
+        run: docker tag dota-tournament-bot registry.digitalocean.com/${{secrets.DO_REGISTRY_NAME}}/dota-tournament-bot:latest
       - name: Push to DO Container Registry
-        run: docker push registry.digitalocean.com/${{secrets.DO_REGISTRY_NAME}}/dota-tournament-bot:${{github.event.inputs.version}}
+        run: docker push registry.digitalocean.com/${{secrets.DO_REGISTRY_NAME}}/dota-tournament-bot:latest

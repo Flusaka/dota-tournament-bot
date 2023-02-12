@@ -16,6 +16,7 @@ func main() {
 	discordToken := os.Getenv("DISCORD_TOKEN")
 	mongoUri := os.Getenv("MONGO_URI")
 	stratzToken := os.Getenv("STRATZ_TOKEN")
+	guildID := os.Getenv("GUILD_ID")
 
 	if discordToken == "" {
 		fmt.Println("No Discord token specified")
@@ -40,8 +41,8 @@ func main() {
 	stratzClient := stratz.NewClient(stratzToken)
 	stratzClient.Initialise()
 
-	b := bot.NewDotaBot(stratzClient)
-	err = b.Initialise(discordToken)
+	dotaBot := bot.NewDotaBotWithGuildID(stratzClient, guildID)
+	err = dotaBot.Initialise(discordToken)
 	if err != nil {
 		fmt.Println("Error starting the Discord bot session")
 		return
@@ -53,5 +54,5 @@ func main() {
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	<-sc
 
-	b.Shutdown()
+	dotaBot.Shutdown()
 }

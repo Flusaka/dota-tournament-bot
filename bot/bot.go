@@ -11,10 +11,13 @@ import (
 )
 
 const (
-	connectCommandKey    = "connect"
-	todayCommandKey      = "today"
-	timezoneCommandKey   = "timezone"
-	disconnectCommandKey = "disconnect"
+	connectCommandKey      = "connect"
+	todayCommandKey        = "today"
+	timezoneCommandKey     = "timezone"
+	leagueCommandKey       = "league"
+	leagueAddCommandKey    = "add"
+	leagueRemoveCommandKey = "remove"
+	disconnectCommandKey   = "disconnect"
 )
 
 var (
@@ -42,6 +45,58 @@ var (
 							Value: "EET",
 						},
 					},
+				},
+			},
+		},
+		{
+			Name:        leagueCommandKey,
+			Description: "Add/remove the leagues to be notified about",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Name:        leagueAddCommandKey,
+					Description: "Add the specified league selection to the notification list",
+					Options: []*discordgo.ApplicationCommandOption{
+						{
+							Name:        "league",
+							Description: "The league to add",
+							Type:        discordgo.ApplicationCommandOptionString,
+							Required:    true,
+							Choices: []*discordgo.ApplicationCommandOptionChoice{
+								{
+									Name:  "DPC League",
+									Value: schema.LeagueTierDpcLeague,
+								},
+								{
+									Name:  "The International",
+									Value: schema.LeagueTierInternational,
+								},
+							},
+						},
+					},
+					Type: discordgo.ApplicationCommandOptionSubCommand,
+				},
+				{
+					Name:        leagueRemoveCommandKey,
+					Description: "Remove the specified league selection to the notification list",
+					Options: []*discordgo.ApplicationCommandOption{
+						{
+							Name:        "league",
+							Description: "The league to remove",
+							Type:        discordgo.ApplicationCommandOptionString,
+							Required:    true,
+							Choices: []*discordgo.ApplicationCommandOptionChoice{
+								{
+									Name:  "DPC League",
+									Value: schema.LeagueTierDpcLeague,
+								},
+								{
+									Name:  "The International",
+									Value: schema.LeagueTierInternational,
+								},
+							},
+						},
+					},
+					Type: discordgo.ApplicationCommandOptionSubCommand,
 				},
 			},
 		},
@@ -84,7 +139,6 @@ var (
 					timezone := i.ApplicationCommandData().Options[0].StringValue()
 					err := channel.UpdateTimezone(timezone)
 					if err != nil {
-						b.discordSession.ChannelMessageSend(i.ChannelID, "Invalid timezone specified")
 						s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 							Type: discordgo.InteractionResponseChannelMessageWithSource,
 							Data: &discordgo.InteractionResponseData{
@@ -111,13 +165,24 @@ var (
 		},
 		todayCommandKey: func(b *DotaBot, s *discordgo.Session, i *discordgo.InteractionCreate) {
 			if channel, ok := b.channels[i.ChannelID]; ok {
-				// TODO: Make this configurable in the channel
-				var tiers = []schema.LeagueTier{schema.LeagueTierDpcLeague}
+				// If there's no league tiers configured, let the channel know!
+				tiers := channel.GetLeagues()
+				if len(tiers) == 0 {
+					s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+						Type: discordgo.InteractionResponseChannelMessageWithSource,
+						Data: &discordgo.InteractionResponseData{
+							Content: "No leagues have been added to this channel's configuration yet! Add some by using /league add [league]",
+						},
+					})
+					return
+				}
+
 				leagues, err := b.stratzClient.GetActiveLeagues(tiers)
 				if err != nil {
 					b.discordSession.ChannelMessageSend(i.ChannelID, "Failed to get active leagues")
 				} else {
 					// TODO: Definitely ways to improve and optimise this code :shrug:
+					// TODO: Move this out of this method when we have daily notifications
 					// Could probably cache these things every X amount of time
 					for _, league := range leagues {
 						var allMatches []schema.GetLeaguesLeaguesLeagueTypeNodeGroupsLeagueNodeGroupTypeNodesLeagueNodeType
@@ -170,7 +235,7 @@ var (
 						}
 
 						// Build up the message
-						message := league.DisplayName + " games today!\n\n"
+						message := ":robot: " + league.DisplayName + " games today!\n\n"
 						for streamUrl, streamMatches := range streamMatchesMap {
 							message += "Games on: " + streamUrl + "\n\n"
 							for _, streamMatch := range streamMatches {
@@ -184,6 +249,7 @@ var (
 
 						if len(message) > 0 {
 							// Send the message and get the Discord message struct back
+							// TODO: Respond to the interaction somehow
 							discordMsg, err := b.discordSession.ChannelMessageSend(i.ChannelID, message)
 							if err != nil {
 								fmt.Println("Error sending message to", i.ChannelID, err.Error())
@@ -194,6 +260,40 @@ var (
 								b.discordSession.ChannelMessageEditComplex(editMessage)
 							}
 						}
+					}
+				}
+			}
+		},
+		leagueCommandKey: func(b *DotaBot, s *discordgo.Session, i *discordgo.InteractionCreate) {
+			// Check whether it was an add or remove command
+			if channel, ok := b.channels[i.ChannelID]; ok {
+				innerCommand := i.ApplicationCommandData().Options[0]
+				leagueValue := innerCommand.Options[0].StringValue()
+				switch innerCommand.Name {
+				case leagueAddCommandKey:
+					{
+						addedSuccessfully := channel.AddLeague(schema.LeagueTier(leagueValue))
+						if addedSuccessfully {
+							s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+								Type: discordgo.InteractionResponseChannelMessageWithSource,
+								Data: &discordgo.InteractionResponseData{Content: "League added successfully!"},
+							})
+						} else {
+							s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+								Type: discordgo.InteractionResponseChannelMessageWithSource,
+								Data: &discordgo.InteractionResponseData{Content: "League has already been added"},
+							})
+						}
+						break
+					}
+				case leagueRemoveCommandKey:
+					{
+						channel.RemoveLeague(schema.LeagueTier(leagueValue))
+						s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+							Type: discordgo.InteractionResponseChannelMessageWithSource,
+							Data: &discordgo.InteractionResponseData{Content: "League removed successfully!"},
+						})
+						break
 					}
 				}
 			}
@@ -215,13 +315,19 @@ var (
 )
 
 type DotaBot struct {
+	GuildID        string
 	stratzClient   *stratz.Client
 	discordSession *discordgo.Session
 	channels       map[string]*DotaBotChannel
 }
 
 func NewDotaBot(stratzClient *stratz.Client) *DotaBot {
+	return NewDotaBotWithGuildID(stratzClient, "")
+}
+
+func NewDotaBotWithGuildID(stratzClient *stratz.Client, guildID string) *DotaBot {
 	b := new(DotaBot)
+	b.GuildID = guildID
 	b.stratzClient = stratzClient
 	b.channels = make(map[string]*DotaBotChannel)
 	return b
@@ -237,6 +343,9 @@ func (b *DotaBot) Initialise(token string) error {
 	for _, config := range configs {
 		fmt.Println("Restarting channel on ID", config.ChannelID)
 		b.channels[config.ChannelID] = NewDotaBotChannelWithConfig(config)
+
+		// Call update on the config in case there's new values added that should go into the database
+		config.Update()
 	}
 
 	dg, err := discordgo.New("Bot " + token)
@@ -275,7 +384,7 @@ func (b *DotaBot) Initialise(token string) error {
 	if err == nil {
 		b.discordSession = dg
 		for _, command := range commands {
-			cmd, err := b.discordSession.ApplicationCommandCreate(b.discordSession.State.User.ID, "", command)
+			cmd, err := b.discordSession.ApplicationCommandCreate(b.discordSession.State.User.ID, b.GuildID, command)
 			if err != nil {
 				fmt.Println("Error creating command", err)
 			} else {

@@ -2,6 +2,7 @@ package bot
 
 import (
 	"github.com/flusaka/dota-tournament-bot/models"
+	"github.com/flusaka/dota-tournament-bot/stratz/schema"
 	"time"
 )
 
@@ -77,13 +78,31 @@ func (bc *DotaBotChannel) UpdateDailyMessageTime(timeString string) error {
 	return nil
 }
 
-func (bc *DotaBotChannel) getParsingZone() (*time.Location, error) {
-	activeTimeZone, err := time.LoadLocation(bc.config.Timezone)
-	if err != nil {
-		return nil, err
+func (bc *DotaBotChannel) GetLeagues() []schema.LeagueTier {
+	return bc.config.Leagues
+}
+
+func (bc *DotaBotChannel) AddLeague(league schema.LeagueTier) bool {
+	// TODO: Maybe change to error response
+	for _, existingLeague := range bc.config.Leagues {
+		if existingLeague == league {
+			return false
+		}
 	}
-	currentTime := time.Now().In(activeTimeZone)
-	return time.FixedZone(currentTime.Zone()), nil
+	bc.config.Leagues = append(bc.config.Leagues, league)
+	bc.config.Update()
+	return true
+}
+
+func (bc *DotaBotChannel) RemoveLeague(league schema.LeagueTier) {
+	var leagues []schema.LeagueTier
+	for _, existingLeague := range bc.config.Leagues {
+		if existingLeague != league {
+			leagues = append(leagues, existingLeague)
+		}
+	}
+	bc.config.Leagues = leagues
+	bc.config.Update()
 }
 
 func (bc *DotaBotChannel) GetTimeInZone(timestamp int64) (time.Time, error) {
@@ -109,4 +128,13 @@ func (bc *DotaBotChannel) IsTimeWithinDay(timestamp int64) bool {
 	startOfDay := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 0, 0, 0, 0, parsingZone)
 	endOfDay := startOfDay.Add(time.Hour * 24).Add(-time.Second)
 	return convertedTime.After(startOfDay) && convertedTime.Before(endOfDay)
+}
+
+func (bc *DotaBotChannel) getParsingZone() (*time.Location, error) {
+	activeTimeZone, err := time.LoadLocation(bc.config.Timezone)
+	if err != nil {
+		return nil, err
+	}
+	currentTime := time.Now().In(activeTimeZone)
+	return time.FixedZone(currentTime.Zone()), nil
 }

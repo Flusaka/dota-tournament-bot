@@ -56,12 +56,6 @@ func (bc *DotaBotChannel) UpdateTimezone(timezone string) error {
 }
 
 func (bc *DotaBotChannel) UpdateDailyMessageTime(timeString string) error {
-	/** Parse from string, possible formats:
-		- 9:30
-		- 15:45
-		- 12PM
-		- 1AM
-	**/
 	activeTimeZone, err := time.LoadLocation(bc.config.Timezone)
 	parsingZone := time.FixedZone(time.Now().In(activeTimeZone).Zone())
 	dailyTime, err := time.ParseInLocation(time.Kitchen, timeString, parsingZone)
@@ -70,9 +64,9 @@ func (bc *DotaBotChannel) UpdateDailyMessageTime(timeString string) error {
 		return err
 	}
 
-	dailyTimeUtc := dailyTime.UTC()
-
-	bc.config.DailyMessageTime = dailyTimeUtc
+	dailyTimeUTC := dailyTime.UTC()
+	bc.config.DailyMessageHour = int8(dailyTimeUTC.Hour())
+	bc.config.DailyMessageMinute = int8(dailyTimeUTC.Minute())
 	bc.config.Update()
 
 	return nil

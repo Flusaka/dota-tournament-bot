@@ -3,18 +3,17 @@ package models
 import (
 	"fmt"
 	"github.com/flusaka/dota-tournament-bot/stratz/schema"
-	"time"
-
 	"github.com/kamva/mgm/v3"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
 type ChannelConfig struct {
-	mgm.DefaultModel `bson:",inline"`
-	ChannelID        string              `bson:"channelID"`
-	Timezone         string              `bson:"tz"`
-	DailyMessageTime time.Time           `bson:"dailyMessageTime, omitempty"`
-	Leagues          []schema.LeagueTier `bson:"leagues, omitempty"`
+	mgm.DefaultModel   `bson:",inline"`
+	ChannelID          string              `bson:"channelID"`
+	Timezone           string              `bson:"tz"`
+	DailyMessageHour   int8                `bson:"dailyMessageHour"`
+	DailyMessageMinute int8                `bson:"dailyMessageMinute"`
+	Leagues            []schema.LeagueTier `bson:"leagues, omitempty"`
 }
 
 func NewChannelConfig(channelID string) *ChannelConfig {
@@ -26,6 +25,9 @@ func NewChannelConfig(channelID string) *ChannelConfig {
 
 		// Default to DPC League, Majors and The International
 		Leagues: []schema.LeagueTier{schema.LeagueTierDpcLeague, schema.LeagueTierMajor, schema.LeagueTierInternational},
+
+		DailyMessageHour:   0,
+		DailyMessageMinute: 0,
 	}
 }
 

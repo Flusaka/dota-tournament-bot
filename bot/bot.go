@@ -13,6 +13,7 @@ import (
 const (
 	connectCommandKey      = "connect"
 	todayCommandKey        = "today"
+	dailyCommandKey        = "daily"
 	timezoneCommandKey     = "timezone"
 	leagueCommandKey       = "league"
 	leagueAddCommandKey    = "add"
@@ -101,8 +102,20 @@ var (
 			},
 		},
 		{
+			Name:        dailyCommandKey,
+			Description: "Set the time to be notified every day of all the day's matches",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Name:        "time",
+					Description: "The time to send daily notifications, e.g. 10:30AM",
+					Type:        discordgo.ApplicationCommandOptionString,
+					Required:    true,
+				},
+			},
+		},
+		{
 			Name:        todayCommandKey,
-			Description: "Get all matches that are happening in the DPC today",
+			Description: "Get all matches that are happening today",
 		},
 		{
 			Name:        disconnectCommandKey,
@@ -262,6 +275,37 @@ var (
 						}
 					}
 				}
+			} else {
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Content: "DotaBot is not connected to this channel yet! Please use the \"/connect\" command before running other commands",
+					},
+				})
+			}
+		},
+		dailyCommandKey: func(b *DotaBot, s *discordgo.Session, i *discordgo.InteractionCreate) {
+			if channel, ok := b.channels[i.ChannelID]; ok {
+				time := i.ApplicationCommandData().Options[0].StringValue()
+				err := channel.UpdateDailyMessageTime(time)
+				if err != nil {
+					s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+						Type: discordgo.InteractionResponseChannelMessageWithSource,
+						Data: &discordgo.InteractionResponseData{Content: "Invalid time format! Please make sure use full 12-hour time format - e.g. 10:00AM"},
+					})
+				} else {
+					s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+						Type: discordgo.InteractionResponseChannelMessageWithSource,
+						Data: &discordgo.InteractionResponseData{Content: "Daily notification set to " + time},
+					})
+				}
+			} else {
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Content: "DotaBot is not connected to this channel yet! Please use the \"/connect\" command before running other commands",
+					},
+				})
 			}
 		},
 		leagueCommandKey: func(b *DotaBot, s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -296,6 +340,13 @@ var (
 						break
 					}
 				}
+			} else {
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Content: "DotaBot is not connected to this channel yet! Please use the \"/connect\" command before running other commands",
+					},
+				})
 			}
 		},
 		disconnectCommandKey: func(b *DotaBot, s *discordgo.Session, i *discordgo.InteractionCreate) {

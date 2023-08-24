@@ -67,6 +67,10 @@ var (
 									Value: schema.LeagueTierDpcLeague,
 								},
 								{
+									Name:  "The International Qualifiers",
+									Value: schema.LeagueTierDpcLeagueQualifier,
+								},
+								{
 									Name:  "The International",
 									Value: schema.LeagueTierInternational,
 								},
@@ -189,15 +193,7 @@ var (
 		},
 		todayCommandKey: func(b *DotaBot, s *discordgo.Session, i *discordgo.InteractionCreate) {
 			if channel, ok := b.channels[i.ChannelID]; ok {
-				response := channel.SendMatchesOfTheDay()
-				if response != ChannelResponseSuccess {
-					s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-						Type: discordgo.InteractionResponseChannelMessageWithSource,
-						Data: &discordgo.InteractionResponseData{
-							Content: string(response),
-						},
-					})
-				}
+				channel.SendMatchesOfTheDayInResponseTo(i)
 			} else {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,

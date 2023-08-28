@@ -62,6 +62,7 @@ type DotaBotChannel struct {
 	session                  *discordgo.Session
 	config                   *models.ChannelConfig
 	stratzClient             *stratz.Client
+	notificationTicker       *time.Ticker
 	cancelDailyNotifications chan bool
 }
 
@@ -72,6 +73,7 @@ func NewDotaBotChannel(session *discordgo.Session, channelID string, stratzClien
 		initialConfig,
 		stratzClient,
 		nil,
+		nil,
 	}
 }
 
@@ -80,6 +82,7 @@ func NewDotaBotChannelWithConfig(session *discordgo.Session, config *models.Chan
 		session,
 		config,
 		stratzClient,
+		nil,
 		nil,
 	}
 
@@ -118,13 +121,40 @@ func (bc *DotaBotChannel) EnableDailyNotifications(enabled bool) ChannelResponse
 }
 
 func (bc *DotaBotChannel) startDailyNotifications() {
-	bc.cancelDailyNotifications = make(chan bool)
+	timeUntilNotification, err := bc.calculateTimeUntilNextNotification()
+	if err != nil {
+		return
+	}
 
+	bc.cancelDailyNotifications = make(chan bool)
+	bc.notificationTicker = time.NewTicker(timeUntilNotification)
+
+	go func() {
+		for {
+			select {
+			case <-bc.notificationTicker.C:
+				bc.SendMatchesOfTheDay()
+
+				// Reset the daily notifications to 24 hours on from this ticker event
+				bc.notificationTicker.Reset(24 * time.Hour)
+			case <-bc.cancelDailyNotifications:
+				return
+			}
+		}
+	}()
+}
+
+func (bc *DotaBotChannel) stopDailyNotifications() {
+	close(bc.cancelDailyNotifications)
+	bc.notificationTicker = nil
+}
+
+func (bc *DotaBotChannel) calculateTimeUntilNextNotification() (time.Duration, error) {
 	// Calculate time until next daily notifications should be sent
 	now := time.Now()
 	zone, err := bc.getParsingZone()
 	if err != nil {
-		return
+		return 0, err
 	}
 	nowInTimezone := now.In(zone)
 
@@ -137,26 +167,7 @@ func (bc *DotaBotChannel) startDailyNotifications() {
 	// Create a time object in the current location set to the notification time
 	firstNotificationTime := time.Date(nowInTimezone.Year(), nowInTimezone.Month(), day, bc.config.DailyMessageHour, bc.config.DailyMessageMinute, 0, 0, zone)
 	timeUntilNotification := firstNotificationTime.Sub(nowInTimezone)
-
-	ticker := time.NewTicker(timeUntilNotification)
-
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				bc.SendMatchesOfTheDay()
-
-				// Reset the daily notifications to 24 hours on from this ticker event
-				ticker.Reset(24 * time.Hour)
-			case <-bc.cancelDailyNotifications:
-				return
-			}
-		}
-	}()
-}
-
-func (bc *DotaBotChannel) stopDailyNotifications() {
-	close(bc.cancelDailyNotifications)
+	return timeUntilNotification, nil
 }
 
 func (bc *DotaBotChannel) SendMatchesOfTheDayInResponseTo(interaction *discordgo.InteractionCreate) {
@@ -363,6 +374,14 @@ func (bc *DotaBotChannel) UpdateTimezone(timezone string) error {
 	bc.config.Timezone = timezone
 	bc.config.Update()
 
+	// Update the existing timer, if it's not nil
+	if bc.notificationTicker != nil {
+		timeUntilNotification, err := bc.calculateTimeUntilNextNotification()
+		if err == nil {
+			bc.notificationTicker.Reset(timeUntilNotification)
+		}
+	}
+
 	return nil
 }
 
@@ -378,6 +397,14 @@ func (bc *DotaBotChannel) UpdateDailyMessageTime(timeString string) error {
 	bc.config.DailyMessageHour = dailyTime.Hour()
 	bc.config.DailyMessageMinute = dailyTime.Minute()
 	bc.config.Update()
+
+	// Update the existing timer, if it's not nil
+	if bc.notificationTicker != nil {
+		timeUntilNotification, err := bc.calculateTimeUntilNextNotification()
+		if err == nil {
+			bc.notificationTicker.Reset(timeUntilNotification)
+		}
+	}
 
 	return nil
 }

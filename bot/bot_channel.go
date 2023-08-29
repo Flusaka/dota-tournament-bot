@@ -22,7 +22,7 @@ const (
 	ChannelResponseFailedToSendToDiscord   ChannelResponse = 4
 
 	// Unknown stream key
-	UnknownStreamKey = "Stream Unknown"
+	UnknownStreamKey = "UnknownStream"
 )
 
 //var (
@@ -257,6 +257,9 @@ func (bc *DotaBotChannel) SendMatchesOfTheDay() ChannelResponse {
 func (bc *DotaBotChannel) generateDailyMatchMessage(leagueMatches LeagueMatchesSet) string {
 	message := ""
 	for streamUrl, streamMatches := range leagueMatches.Matches {
+		if streamUrl == UnknownStreamKey {
+			streamUrl = "https://twitch.tv (Channel Unknown)"
+		}
 		message += "Games on: " + streamUrl + "\n\n"
 		for _, streamMatch := range streamMatches {
 			convertedTime, err := bc.GetTimeInZone(streamMatch.ScheduledTime)

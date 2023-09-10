@@ -94,6 +94,10 @@ var (
 									Value: schema.LeagueTierDpcLeague,
 								},
 								{
+									Name:  "The International Qualifiers",
+									Value: schema.LeagueTierDpcLeagueQualifier,
+								},
+								{
 									Name:  "The International",
 									Value: schema.LeagueTierInternational,
 								},

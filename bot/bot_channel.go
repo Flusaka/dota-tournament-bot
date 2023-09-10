@@ -6,6 +6,7 @@ import (
 	"github.com/flusaka/dota-tournament-bot/models"
 	"github.com/flusaka/dota-tournament-bot/stratz"
 	"github.com/flusaka/dota-tournament-bot/stratz/schema"
+	"log"
 	"sort"
 	"time"
 )
@@ -23,6 +24,13 @@ const (
 
 	// Unknown stream key
 	UnknownStreamKey = "UnknownStream"
+)
+
+var (
+	timezoneShortcodeFullMap = map[string]string{
+		"GMT": "Europe/London",
+		"EET": "Europe/Helsinki",
+	}
 )
 
 //var (
@@ -224,6 +232,20 @@ func (bc *DotaBotChannel) SendMatchesOfTheDayInResponseTo(interaction *discordgo
 			})
 			break
 		}
+	case ChannelResponseFailedToRetrieveLeagues:
+		{
+			log.Printf("Failed to retrieve leagues from Stratz API")
+		}
+	case ChannelResponseNoLeagues:
+		{
+			bc.session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: "No leagues have been set up on this channel yet! Use </league:1149450651114426369> to add one first!",
+					Flags:   discordgo.MessageFlagsSuppressEmbeds,
+				},
+			})
+		}
 	}
 }
 
@@ -266,7 +288,7 @@ func (bc *DotaBotChannel) generateDailyMatchMessage(leagueMatches LeagueMatchesS
 			if err != nil {
 				continue
 			}
-			message += streamMatch.Radiant.DisplayName + " vs " + streamMatch.Dire.DisplayName + " - " + convertedTime.Format(time.Kitchen) + "\n"
+			message += convertedTime.Format(time.Kitchen) + " - " + streamMatch.Radiant.DisplayName + " vs " + streamMatch.Dire.DisplayName + "\n"
 		}
 	}
 	return message
@@ -369,7 +391,12 @@ func (bc *DotaBotChannel) getMatchesToday() (ChannelResponse, []LeagueMatchesSet
 }
 
 func (bc *DotaBotChannel) UpdateTimezone(timezone string) error {
-	_, err := time.LoadLocation(timezone)
+	actualTimezone, err := bc.getActualTimezoneLocation(timezone)
+	if err != nil {
+		return fmt.Errorf("timezone is unsupported")
+	}
+
+	_, err = time.LoadLocation(actualTimezone)
 	if err != nil {
 		return err
 	}
@@ -465,10 +492,19 @@ func (bc *DotaBotChannel) IsTimeWithinDay(timestamp int64) bool {
 }
 
 func (bc *DotaBotChannel) getParsingZone() (*time.Location, error) {
-	activeTimeZone, err := time.LoadLocation(bc.config.Timezone)
+	actualTimezone, err := bc.getActualTimezoneLocation(bc.config.Timezone)
+	activeTimeZone, err := time.LoadLocation(actualTimezone)
 	if err != nil {
 		return nil, err
 	}
 	currentTime := time.Now().In(activeTimeZone)
 	return time.FixedZone(currentTime.Zone()), nil
+}
+
+func (bc *DotaBotChannel) getActualTimezoneLocation(timezone string) (string, error) {
+	actualTimezone, timezoneExistsInMap := timezoneShortcodeFullMap[timezone]
+	if !timezoneExistsInMap {
+		return "", fmt.Errorf("timezone is unsupported")
+	}
+	return actualTimezone, nil
 }

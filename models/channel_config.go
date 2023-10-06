@@ -2,19 +2,19 @@ package models
 
 import (
 	"fmt"
-	"github.com/flusaka/dota-tournament-bot/stratz/schema"
+	"github.com/flusaka/dota-tournament-bot/datasource/types"
 	"github.com/kamva/mgm/v3"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
 type ChannelConfig struct {
 	mgm.DefaultModel          `bson:",inline"`
-	ChannelID                 string              `bson:"channelID"`
-	Timezone                  string              `bson:"tz"`
-	DailyMessageHour          int                 `bson:"dailyMessageHour"`
-	DailyMessageMinute        int                 `bson:"dailyMessageMinute"`
-	DailyNotificationsEnabled bool                `bson:"dailyNotificationsEnabled"`
-	Leagues                   []schema.LeagueTier `bson:"leagues, omitempty"`
+	ChannelID                 string       `bson:"channelID"`
+	Timezone                  string       `bson:"tz"`
+	DailyMessageHour          int          `bson:"dailyMessageHour"`
+	DailyMessageMinute        int          `bson:"dailyMessageMinute"`
+	DailyNotificationsEnabled bool         `bson:"dailyNotificationsEnabled"`
+	Leagues                   []types.Tier `bson:"leagues, omitempty"`
 }
 
 func NewChannelConfig(channelID string) *ChannelConfig {
@@ -25,7 +25,7 @@ func NewChannelConfig(channelID string) *ChannelConfig {
 		Timezone: "GMT",
 
 		// Default to DPC League, Majors and The International
-		Leagues: []schema.LeagueTier{schema.LeagueTierDpcLeague, schema.LeagueTierMajor, schema.LeagueTierInternational},
+		Leagues: []types.Tier{types.TierDpcLeague, types.TierMajor, types.TierInternational},
 
 		DailyMessageHour:          0,
 		DailyMessageMinute:        0,

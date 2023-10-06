@@ -3,9 +3,9 @@ package bot
 import (
 	"fmt"
 	"github.com/bwmarrin/discordgo"
+	"github.com/flusaka/dota-tournament-bot/datasource"
+	"github.com/flusaka/dota-tournament-bot/datasource/types"
 	"github.com/flusaka/dota-tournament-bot/models"
-	"github.com/flusaka/dota-tournament-bot/stratz"
-	"github.com/flusaka/dota-tournament-bot/stratz/schema"
 )
 
 const (
@@ -64,15 +64,27 @@ var (
 							Choices: []*discordgo.ApplicationCommandOptionChoice{
 								{
 									Name:  "DPC League",
-									Value: schema.LeagueTierDpcLeague,
+									Value: types.TierDpcLeague,
 								},
 								{
 									Name:  "The International Qualifiers",
-									Value: schema.LeagueTierDpcLeagueQualifier,
+									Value: types.TierDpcLeagueQualifier,
 								},
 								{
 									Name:  "The International",
-									Value: schema.LeagueTierInternational,
+									Value: types.TierInternational,
+								},
+								{
+									Name:  "Majors",
+									Value: types.TierMajor,
+								},
+								{
+									Name:  "Minors",
+									Value: types.TierMinor,
+								},
+								{
+									Name:  "Other Pro Tournaments",
+									Value: types.TierProfessional,
 								},
 							},
 						},
@@ -91,15 +103,27 @@ var (
 							Choices: []*discordgo.ApplicationCommandOptionChoice{
 								{
 									Name:  "DPC League",
-									Value: schema.LeagueTierDpcLeague,
+									Value: types.TierDpcLeague,
 								},
 								{
 									Name:  "The International Qualifiers",
-									Value: schema.LeagueTierDpcLeagueQualifier,
+									Value: types.TierDpcLeagueQualifier,
 								},
 								{
 									Name:  "The International",
-									Value: schema.LeagueTierInternational,
+									Value: types.TierInternational,
+								},
+								{
+									Name:  "Majors",
+									Value: types.TierMajor,
+								},
+								{
+									Name:  "Minors",
+									Value: types.TierMinor,
+								},
+								{
+									Name:  "Other Pro Tournaments",
+									Value: types.TierProfessional,
 								},
 							},
 						},
@@ -154,7 +178,7 @@ var (
 				})
 			} else {
 				fmt.Println("Starting bot on channel", i.ChannelID)
-				channel := NewDotaBotChannel(s, i.ChannelID, b.stratzClient)
+				channel := NewDotaBotChannel(s, i.ChannelID, b.dataSourceClient)
 				channel.Start()
 				b.channels[i.ChannelID] = channel
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -263,7 +287,7 @@ var (
 				switch innerCommand.Name {
 				case leagueAddCommandKey:
 					{
-						addedSuccessfully := channel.AddLeague(schema.LeagueTier(leagueValue))
+						addedSuccessfully := channel.AddLeague(types.Tier(leagueValue))
 						if addedSuccessfully {
 							s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 								Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -279,7 +303,7 @@ var (
 					}
 				case leagueRemoveCommandKey:
 					{
-						channel.RemoveLeague(schema.LeagueTier(leagueValue))
+						channel.RemoveLeague(types.Tier(leagueValue))
 						s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 							Type: discordgo.InteractionResponseChannelMessageWithSource,
 							Data: &discordgo.InteractionResponseData{Content: "League removed successfully!"},
@@ -313,20 +337,20 @@ var (
 )
 
 type DotaBot struct {
-	guildID        string
-	stratzClient   *stratz.Client
-	discordSession *discordgo.Session
-	channels       map[string]*DotaBotChannel
+	guildID          string
+	dataSourceClient datasource.Client
+	discordSession   *discordgo.Session
+	channels         map[string]*DotaBotChannel
 }
 
-func NewDotaBot(stratzClient *stratz.Client) *DotaBot {
-	return NewDotaBotWithGuildID(stratzClient, "")
+func NewDotaBot(dataSourceClient datasource.Client) *DotaBot {
+	return NewDotaBotWithGuildID(dataSourceClient, "")
 }
 
-func NewDotaBotWithGuildID(stratzClient *stratz.Client, guildID string) *DotaBot {
+func NewDotaBotWithGuildID(dataSourceClient datasource.Client, guildID string) *DotaBot {
 	b := new(DotaBot)
 	b.guildID = guildID
-	b.stratzClient = stratzClient
+	b.dataSourceClient = dataSourceClient
 	b.channels = make(map[string]*DotaBotChannel)
 	return b
 }
@@ -360,7 +384,7 @@ func (b *DotaBot) Initialise(token string) error {
 		// Setup existing bot channels
 		for _, config := range configs {
 			fmt.Println("Restarting channel on ID", config.ChannelID)
-			b.channels[config.ChannelID] = NewDotaBotChannelWithConfig(b.discordSession, config, b.stratzClient)
+			b.channels[config.ChannelID] = NewDotaBotChannelWithConfig(b.discordSession, config, b.dataSourceClient)
 
 			// Call update on the config in case there's new values added that should go into the database
 			config.Update()

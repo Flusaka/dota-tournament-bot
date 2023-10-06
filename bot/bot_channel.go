@@ -3,9 +3,10 @@ package bot
 import (
 	"fmt"
 	"github.com/bwmarrin/discordgo"
+	"github.com/flusaka/dota-tournament-bot/datasource"
+	"github.com/flusaka/dota-tournament-bot/datasource/queries"
+	"github.com/flusaka/dota-tournament-bot/datasource/types"
 	"github.com/flusaka/dota-tournament-bot/models"
-	"github.com/flusaka/dota-tournament-bot/stratz"
-	"github.com/flusaka/dota-tournament-bot/stratz/schema"
 	"log"
 	"sort"
 	"time"
@@ -69,27 +70,27 @@ type LeagueMatchesSet struct {
 type DotaBotChannel struct {
 	session                  *discordgo.Session
 	config                   *models.ChannelConfig
-	stratzClient             *stratz.Client
+	dataSourceClient         datasource.Client
 	notificationTicker       *time.Ticker
 	cancelDailyNotifications chan bool
 }
 
-func NewDotaBotChannel(session *discordgo.Session, channelID string, stratzClient *stratz.Client) *DotaBotChannel {
+func NewDotaBotChannel(session *discordgo.Session, channelID string, dataSourceClient datasource.Client) *DotaBotChannel {
 	initialConfig := models.NewChannelConfig(channelID)
 	return &DotaBotChannel{
 		session,
 		initialConfig,
-		stratzClient,
+		dataSourceClient,
 		nil,
 		nil,
 	}
 }
 
-func NewDotaBotChannelWithConfig(session *discordgo.Session, config *models.ChannelConfig, stratzClient *stratz.Client) *DotaBotChannel {
+func NewDotaBotChannelWithConfig(session *discordgo.Session, config *models.ChannelConfig, dataSourceClient datasource.Client) *DotaBotChannel {
 	dotaBotChannel := &DotaBotChannel{
 		session,
 		config,
-		stratzClient,
+		dataSourceClient,
 		nil,
 		nil,
 	}
@@ -301,7 +302,8 @@ func (bc *DotaBotChannel) getMatchesToday() (ChannelResponse, []LeagueMatchesSet
 		return ChannelResponseNoLeagues, nil
 	}
 
-	leagues, err := bc.stratzClient.GetActiveLeagues(tiers)
+	query := queries.NewGetLeaguesQuery(bc.GetLeagues(), false)
+	leagues, err := bc.dataSourceClient.GetLeagues(query)
 	if err != nil {
 		return ChannelResponseFailedToRetrieveLeagues, nil
 	}
@@ -317,29 +319,15 @@ func (bc *DotaBotChannel) getMatchesToday() (ChannelResponse, []LeagueMatchesSet
 	for _, league := range leagues {
 		leagueMatch := LeagueMatchesSet{
 			League: League{
-				ID:          league.Id,
+				ID:          league.ID,
 				DisplayName: league.DisplayName,
 			},
 			Matches: map[string][]Match{},
 		}
-		var allMatches []schema.GetLeaguesLeaguesLeagueTypeNodeGroupsLeagueNodeGroupTypeNodesLeagueNodeType
-		for _, nodeGroup := range league.NodeGroups {
-			allMatches = append(allMatches, nodeGroup.Nodes...)
-		}
-
-		// First, let's remove all matches outside of today
-		var matches []schema.GetLeaguesLeaguesLeagueTypeNodeGroupsLeagueNodeGroupTypeNodesLeagueNodeType
-		for _, match := range allMatches {
-			// TODO: Check actual time if match already completed
-			isWithinDay := bc.IsTimeWithinDay(match.ScheduledTime)
-			if !isWithinDay {
-				continue
-			}
-			matches = append(matches, match)
-		}
 
 		// If there's no matches today for this league, skip over
-		if len(matches) == 0 {
+		matches := league.Matches
+		if len(league.Matches) == 0 {
 			continue
 		}
 
@@ -352,24 +340,16 @@ func (bc *DotaBotChannel) getMatchesToday() (ChannelResponse, []LeagueMatchesSet
 		// Finally, create a map of streams to matches
 		streamMatchesMap := make(map[string][]Match)
 		for _, match := range matches {
+			// TODO: Probably don't need these internal types anymore, basically superceded by datasource types
 			matchToAdd := Match{
 				Dire: Team{
-					DisplayName: match.TeamTwo.Name,
+					DisplayName: match.Dire.DisplayName,
 				},
 				Radiant: Team{
-					DisplayName: match.TeamOne.Name,
+					DisplayName: match.Radiant.DisplayName,
 				},
 				ScheduledTime: match.ScheduledTime,
-			}
-
-			if len(match.Streams) > 0 {
-				// Get English stream, if exists, if not :shrug:
-				for _, stream := range match.Streams {
-					if stream.LanguageId == schema.LanguageEnglish {
-						matchToAdd.StreamUrl = stream.StreamUrl
-						break
-					}
-				}
+				StreamUrl:     match.StreamUrl,
 			}
 
 			// If the stream URL for the match is valid, use that as the key in the map and append to that array
@@ -439,11 +419,11 @@ func (bc *DotaBotChannel) UpdateDailyMessageTime(timeString string) error {
 	return nil
 }
 
-func (bc *DotaBotChannel) GetLeagues() []schema.LeagueTier {
+func (bc *DotaBotChannel) GetLeagues() []types.Tier {
 	return bc.config.Leagues
 }
 
-func (bc *DotaBotChannel) AddLeague(league schema.LeagueTier) bool {
+func (bc *DotaBotChannel) AddLeague(league types.Tier) bool {
 	// TODO: Maybe change to error response
 	for _, existingLeague := range bc.config.Leagues {
 		if existingLeague == league {
@@ -455,8 +435,8 @@ func (bc *DotaBotChannel) AddLeague(league schema.LeagueTier) bool {
 	return true
 }
 
-func (bc *DotaBotChannel) RemoveLeague(league schema.LeagueTier) {
-	var leagues []schema.LeagueTier
+func (bc *DotaBotChannel) RemoveLeague(league types.Tier) {
+	var leagues []types.Tier
 	for _, existingLeague := range bc.config.Leagues {
 		if existingLeague != league {
 			leagues = append(leagues, existingLeague)

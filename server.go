@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/flusaka/dota-tournament-bot/datasource/clients"
 	"github.com/flusaka/dota-tournament-bot/stratz"
 	"github.com/kamva/mgm/v3"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -41,7 +42,9 @@ func main() {
 	stratzClient := stratz.NewClient(stratzToken)
 	stratzClient.Initialise()
 
-	dotaBot := bot.NewDotaBotWithGuildID(stratzClient, guildID)
+	dataSourceClient := clients.NewStratzDataSourceClient(stratzClient)
+
+	dotaBot := bot.NewDotaBotWithGuildID(dataSourceClient, guildID)
 	err = dotaBot.Initialise(discordToken)
 	if err != nil {
 		fmt.Println("Error starting the Discord bot session")

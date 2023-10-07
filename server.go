@@ -1,11 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"github.com/flusaka/dota-tournament-bot/datasource/clients"
 	"github.com/flusaka/dota-tournament-bot/stratz"
 	"github.com/kamva/mgm/v3"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -20,22 +20,22 @@ func main() {
 	guildID := os.Getenv("GUILD_ID")
 
 	if discordToken == "" {
-		fmt.Println("No Discord token specified")
+		log.Println("No Discord token specified")
 		return
 	}
 	if mongoUri == "" {
-		fmt.Println("No Mongo URI specified")
+		log.Println("No Mongo URI specified")
 		return
 	}
 	if stratzToken == "" {
-		fmt.Println("No Stratz token specified")
+		log.Println("No Stratz token specified")
 		return
 	}
 
 	// Initialise Mongo
 	err := mgm.SetDefaultConfig(nil, "bot", options.Client().ApplyURI(mongoUri))
 	if err != nil {
-		fmt.Println("Error connecting to MongoDB")
+		log.Println("Error connecting to MongoDB")
 		return
 	}
 
@@ -47,12 +47,12 @@ func main() {
 	dotaBot := bot.NewDotaBotWithGuildID(dataSourceClient, guildID)
 	err = dotaBot.Initialise(discordToken)
 	if err != nil {
-		fmt.Println("Error starting the Discord bot session")
+		log.Println("Error starting the Discord bot session")
 		return
 	}
 
 	// Wait here until CTRL-C or other term signal is received.
-	fmt.Println("Bot is now running. Press CTRL-C to exit.")
+	log.Println("Bot is now running. Press CTRL-C to exit.")
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	<-sc

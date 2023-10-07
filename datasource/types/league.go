@@ -1,9 +1,9 @@
 package types
 
 type League struct {
-	ID          int
-	DisplayName string
-	Matches     []*Match
+	ID          int      `json:"id"`
+	DisplayName string   `json:"displayName"`
+	Matches     []*Match `json:"matches"`
 }
 
 func NewLeague(id int, displayName string) *League {

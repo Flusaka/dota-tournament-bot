@@ -1,11 +1,11 @@
 package bot
 
 import (
-	"fmt"
 	"github.com/bwmarrin/discordgo"
 	"github.com/flusaka/dota-tournament-bot/datasource"
 	"github.com/flusaka/dota-tournament-bot/datasource/types"
 	"github.com/flusaka/dota-tournament-bot/models"
+	"log"
 )
 
 const (
@@ -167,9 +167,9 @@ var (
 	}
 	handlers = map[string]func(b *DotaBot, s *discordgo.Session, i *discordgo.InteractionCreate){
 		connectCommandKey: func(b *DotaBot, s *discordgo.Session, i *discordgo.InteractionCreate) {
-			fmt.Println("Connecting DotaBot to channel", i.ChannelID)
+			log.Println("Connecting DotaBot to channel", i.ChannelID)
 			if _, ok := b.channels[i.ChannelID]; ok {
-				fmt.Println("Bot already started in this channel")
+				log.Println("Bot already started in this channel")
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
 					Data: &discordgo.InteractionResponseData{
@@ -177,7 +177,7 @@ var (
 					},
 				})
 			} else {
-				fmt.Println("Starting bot on channel", i.ChannelID)
+				log.Println("Starting bot on channel", i.ChannelID)
 				channel := NewDotaBotChannel(s, i.ChannelID, b.dataSourceClient)
 				channel.Start()
 				b.channels[i.ChannelID] = channel
@@ -322,7 +322,7 @@ var (
 		},
 		disconnectCommandKey: func(b *DotaBot, s *discordgo.Session, i *discordgo.InteractionCreate) {
 			if channel, ok := b.channels[i.ChannelID]; ok {
-				fmt.Println("Stopping bot on channel", i.ChannelID)
+				log.Println("Stopping bot on channel", i.ChannelID)
 				channel.Stop()
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -358,12 +358,11 @@ func NewDotaBotWithGuildID(dataSourceClient datasource.Client, guildID string) *
 func (b *DotaBot) Initialise(token string) error {
 	dg, err := discordgo.New("Bot " + token)
 	if err != nil {
-		fmt.Println("Error creating Discord session", err)
+		log.Println("Error creating Discord session", err)
 		return err
 	}
 
 	dg.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		//fmt.Println(i.ApplicationCommandData().Name)
 		if command, ok := handlers[i.ApplicationCommandData().Name]; ok {
 			command(b, s, i)
 		}
@@ -378,12 +377,12 @@ func (b *DotaBot) Initialise(token string) error {
 
 		configs, err := models.FetchAllConfigs()
 		if err != nil {
-			fmt.Println("Could not retrieve configs", err)
+			log.Println("Could not retrieve configs", err)
 		}
 
 		// Setup existing bot channels
 		for _, config := range configs {
-			fmt.Println("Restarting channel on ID", config.ChannelID)
+			log.Println("Restarting channel on ID", config.ChannelID)
 			b.channels[config.ChannelID] = NewDotaBotChannelWithConfig(b.discordSession, config, b.dataSourceClient)
 
 			// Call update on the config in case there's new values added that should go into the database
@@ -393,13 +392,13 @@ func (b *DotaBot) Initialise(token string) error {
 		for _, command := range commands {
 			cmd, err := b.discordSession.ApplicationCommandCreate(b.discordSession.State.User.ID, b.guildID, command)
 			if err != nil {
-				fmt.Println("Error creating command", err)
+				log.Println("Error creating command", err)
 			} else {
-				fmt.Println("Command registered", cmd)
+				log.Println("Command registered", cmd)
 			}
 		}
 	} else {
-		fmt.Println("Error when opening session", err)
+		log.Println("Error when opening session", err)
 	}
 	return err
 }
@@ -408,7 +407,7 @@ func (b *DotaBot) Shutdown() {
 	// Remove all registered commands
 	registeredCommands, err := b.discordSession.ApplicationCommands(b.discordSession.State.User.ID, b.guildID)
 	if err != nil {
-		fmt.Println("Error when closing Discord session", err)
+		log.Println("Error when closing Discord session", err)
 	}
 
 	for _, command := range registeredCommands {
@@ -417,7 +416,7 @@ func (b *DotaBot) Shutdown() {
 
 	err = b.discordSession.Close()
 	if err != nil {
-		fmt.Println("Error when closing Discord session", err)
+		log.Println("Error when closing Discord session", err)
 	}
 }
 

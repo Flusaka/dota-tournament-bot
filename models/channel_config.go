@@ -1,10 +1,10 @@
 package models
 
 import (
-	"fmt"
 	"github.com/flusaka/dota-tournament-bot/datasource/types"
 	"github.com/kamva/mgm/v3"
 	"go.mongodb.org/mongo-driver/bson"
+	"log"
 )
 
 type ChannelConfig struct {
@@ -45,20 +45,20 @@ func FetchAllConfigs() ([]*ChannelConfig, error) {
 func (cc *ChannelConfig) Create() {
 	err := mgm.Coll(cc).Create(cc)
 	if err != nil {
-		fmt.Println("Error when saving channel config", err)
+		log.Println("Error when saving channel config", err)
 	}
 }
 
 func (cc *ChannelConfig) Update() {
 	err := mgm.Coll(cc).Update(cc)
 	if err != nil {
-		fmt.Println("Error when saving channel config", err)
+		log.Println("Error when saving channel config", err)
 	}
 }
 
 func (cc *ChannelConfig) Delete() {
 	err := mgm.Coll(cc).Delete(cc)
 	if err != nil {
-		fmt.Println("Error when deleting channel config", err)
+		log.Println("Error when deleting channel config", err)
 	}
 }

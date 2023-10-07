@@ -3,9 +3,10 @@ package bot
 import (
 	"fmt"
 	"github.com/bwmarrin/discordgo"
+	"github.com/flusaka/dota-tournament-bot/datasource"
+	"github.com/flusaka/dota-tournament-bot/datasource/queries"
+	"github.com/flusaka/dota-tournament-bot/datasource/types"
 	"github.com/flusaka/dota-tournament-bot/models"
-	"github.com/flusaka/dota-tournament-bot/stratz"
-	"github.com/flusaka/dota-tournament-bot/stratz/schema"
 	"log"
 	"sort"
 	"time"
@@ -45,51 +46,38 @@ var (
 //	}
 //)
 
-type Team struct {
-	DisplayName string
-}
-
-type Match struct {
-	Radiant       Team
-	Dire          Team
-	ScheduledTime int64
-	StreamUrl     string
-}
-
-type League struct {
-	ID          int
-	DisplayName string
-}
-
 type LeagueMatchesSet struct {
-	League  League
-	Matches map[string][]Match
+	League  *types.League
+	Matches map[string][]*types.Match
 }
 
 type DotaBotChannel struct {
 	session                  *discordgo.Session
 	config                   *models.ChannelConfig
-	stratzClient             *stratz.Client
+	dataSourceClient         datasource.Client
 	notificationTicker       *time.Ticker
 	cancelDailyNotifications chan bool
+	channel                  *discordgo.Channel
 }
 
-func NewDotaBotChannel(session *discordgo.Session, channelID string, stratzClient *stratz.Client) *DotaBotChannel {
+func NewDotaBotChannel(session *discordgo.Session, channelID string, dataSourceClient datasource.Client) *DotaBotChannel {
 	initialConfig := models.NewChannelConfig(channelID)
 	return &DotaBotChannel{
 		session,
 		initialConfig,
-		stratzClient,
+		dataSourceClient,
+		nil,
 		nil,
 		nil,
 	}
 }
 
-func NewDotaBotChannelWithConfig(session *discordgo.Session, config *models.ChannelConfig, stratzClient *stratz.Client) *DotaBotChannel {
+func NewDotaBotChannelWithConfig(session *discordgo.Session, config *models.ChannelConfig, dataSourceClient datasource.Client) *DotaBotChannel {
 	dotaBotChannel := &DotaBotChannel{
 		session,
 		config,
-		stratzClient,
+		dataSourceClient,
+		nil,
 		nil,
 		nil,
 	}
@@ -129,6 +117,7 @@ func (bc *DotaBotChannel) EnableDailyNotifications(enabled bool) ChannelResponse
 }
 
 func (bc *DotaBotChannel) startDailyNotifications() {
+	log.Printf("Restarting daily notifications on %v", bc.getChannelIdentifier())
 	timeUntilNotification, err := bc.calculateTimeUntilNextNotification()
 	if err != nil {
 		return
@@ -141,6 +130,7 @@ func (bc *DotaBotChannel) startDailyNotifications() {
 		for {
 			select {
 			case <-bc.notificationTicker.C:
+				log.Printf("Ticker alarm activated! Attempting to send matches of the day to channel ID %v", bc.getChannelIdentifier())
 				bc.SendMatchesOfTheDay()
 
 				// Reset the daily notifications to 24 hours on from this ticker event
@@ -153,6 +143,7 @@ func (bc *DotaBotChannel) startDailyNotifications() {
 }
 
 func (bc *DotaBotChannel) stopDailyNotifications() {
+	log.Printf("Daily notifications stopped for channel ID %v", bc.getChannelIdentifier())
 	close(bc.cancelDailyNotifications)
 	bc.notificationTicker = nil
 }
@@ -208,7 +199,7 @@ func (bc *DotaBotChannel) SendMatchesOfTheDayInResponseTo(interaction *discordgo
 						// Send the message and get the Discord message struct back
 						discordMsg, err := bc.session.ChannelMessageSend(bc.config.ChannelID, fullMessage)
 						if err != nil {
-							fmt.Println("Error sending message to", bc.config.ChannelID, err.Error())
+							log.Println("Error sending message to", bc.getChannelIdentifier(), err.Error())
 						} else {
 							// Suppress the embeds on the message from the stream links
 							editMessage := discordgo.NewMessageEdit(bc.config.ChannelID, discordMsg.ID)
@@ -234,17 +225,19 @@ func (bc *DotaBotChannel) SendMatchesOfTheDayInResponseTo(interaction *discordgo
 		}
 	case ChannelResponseFailedToRetrieveLeagues:
 		{
-			log.Printf("Failed to retrieve leagues from Stratz API")
+			log.Printf("Failed to retrieve leagues from DataSource, channel %v", bc.getChannelIdentifier())
+			break
 		}
 	case ChannelResponseNoLeagues:
 		{
 			bc.session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
-					Content: "No leagues have been set up on this channel yet! Use </league:1149450651114426369> to add one first!",
+					Content: "No leagues have been set up on this channel yet!",
 					Flags:   discordgo.MessageFlagsSuppressEmbeds,
 				},
 			})
+			break
 		}
 	}
 }
@@ -252,7 +245,9 @@ func (bc *DotaBotChannel) SendMatchesOfTheDayInResponseTo(interaction *discordgo
 func (bc *DotaBotChannel) SendMatchesOfTheDay() ChannelResponse {
 	result, leagueMatchesSet := bc.getMatchesToday()
 
-	if result == ChannelResponseSuccess {
+	switch result {
+	case ChannelResponseSuccess:
+		log.Printf("League matches retrieved for channel %v, number of leagues %v", bc.getChannelIdentifier(), len(leagueMatchesSet))
 		for _, leagueMatches := range leagueMatchesSet {
 			// Build up the message
 			message := ":robot: " + leagueMatches.League.DisplayName + " games today!\n\n"
@@ -260,18 +255,29 @@ func (bc *DotaBotChannel) SendMatchesOfTheDay() ChannelResponse {
 
 			if len(matchesMessage) > 0 {
 				// Send the message and get the Discord message struct back
-				// TODO: Respond to the interaction somehow
 				discordMsg, err := bc.session.ChannelMessageSend(bc.config.ChannelID, message+matchesMessage)
 				if err != nil {
-					fmt.Println("Error sending message to", bc.config.ChannelID, err.Error())
+					log.Println("Error sending message to", bc.getChannelIdentifier(), err.Error())
 				} else {
 					// Suppress the embeds on the message from the stream links
 					editMessage := discordgo.NewMessageEdit(bc.config.ChannelID, discordMsg.ID)
 					editMessage.Flags |= discordgo.MessageFlagsSuppressEmbeds
 					bc.session.ChannelMessageEditComplex(editMessage)
 				}
+			} else {
+				log.Printf("Matches message is empty for some reason, channel %v", bc.getChannelIdentifier())
 			}
 		}
+		break
+	case ChannelResponseNoMatches:
+		log.Printf("Failed to retrieve leagues from DataSource for daily notification for channel %v", bc.getChannelIdentifier())
+		break
+	case ChannelResponseFailedToRetrieveLeagues:
+		log.Printf("Failed to retrieve leagues from DataSource for daily notification for channel %v", bc.getChannelIdentifier())
+		break
+	case ChannelResponseNoLeagues:
+		log.Printf("Channel %v doesn't have any leagues configured for daily notification", bc.getChannelIdentifier())
+		break
 	}
 	return result
 }
@@ -301,7 +307,8 @@ func (bc *DotaBotChannel) getMatchesToday() (ChannelResponse, []LeagueMatchesSet
 		return ChannelResponseNoLeagues, nil
 	}
 
-	leagues, err := bc.stratzClient.GetActiveLeagues(tiers)
+	query := queries.NewGetLeaguesQuery(bc.GetLeagues(), false)
+	leagues, err := bc.dataSourceClient.GetLeagues(query)
 	if err != nil {
 		return ChannelResponseFailedToRetrieveLeagues, nil
 	}
@@ -316,20 +323,13 @@ func (bc *DotaBotChannel) getMatchesToday() (ChannelResponse, []LeagueMatchesSet
 	// Could probably cache these things every X amount of time
 	for _, league := range leagues {
 		leagueMatch := LeagueMatchesSet{
-			League: League{
-				ID:          league.Id,
-				DisplayName: league.DisplayName,
-			},
-			Matches: map[string][]Match{},
-		}
-		var allMatches []schema.GetLeaguesLeaguesLeagueTypeNodeGroupsLeagueNodeGroupTypeNodesLeagueNodeType
-		for _, nodeGroup := range league.NodeGroups {
-			allMatches = append(allMatches, nodeGroup.Nodes...)
+			League:  league,
+			Matches: map[string][]*types.Match{},
 		}
 
-		// First, let's remove all matches outside of today
-		var matches []schema.GetLeaguesLeaguesLeagueTypeNodeGroupsLeagueNodeGroupTypeNodesLeagueNodeType
-		for _, match := range allMatches {
+		// If there's no matches today for this league, skip over
+		var matches []*types.Match
+		for _, match := range league.Matches {
 			// TODO: Check actual time if match already completed
 			isWithinDay := bc.IsTimeWithinDay(match.ScheduledTime)
 			if !isWithinDay {
@@ -337,9 +337,7 @@ func (bc *DotaBotChannel) getMatchesToday() (ChannelResponse, []LeagueMatchesSet
 			}
 			matches = append(matches, match)
 		}
-
-		// If there's no matches today for this league, skip over
-		if len(matches) == 0 {
+		if len(league.Matches) == 0 {
 			continue
 		}
 
@@ -349,38 +347,16 @@ func (bc *DotaBotChannel) getMatchesToday() (ChannelResponse, []LeagueMatchesSet
 			return matches[i].ScheduledTime < matches[j].ScheduledTime
 		})
 
-		// Finally, create a map of streams to matches
-		streamMatchesMap := make(map[string][]Match)
+		// Finally, make a map of streams to matches
 		for _, match := range matches {
-			matchToAdd := Match{
-				Dire: Team{
-					DisplayName: match.TeamTwo.Name,
-				},
-				Radiant: Team{
-					DisplayName: match.TeamOne.Name,
-				},
-				ScheduledTime: match.ScheduledTime,
-			}
-
-			if len(match.Streams) > 0 {
-				// Get English stream, if exists, if not :shrug:
-				for _, stream := range match.Streams {
-					if stream.LanguageId == schema.LanguageEnglish {
-						matchToAdd.StreamUrl = stream.StreamUrl
-						break
-					}
-				}
-			}
-
 			// If the stream URL for the match is valid, use that as the key in the map and append to that array
-			if matchToAdd.StreamUrl != "" {
-				streamMatchesMap[matchToAdd.StreamUrl] = append(streamMatchesMap[matchToAdd.StreamUrl], matchToAdd)
+			if match.StreamUrl != "" {
+				leagueMatch.Matches[match.StreamUrl] = append(leagueMatch.Matches[match.StreamUrl], match)
 			} else { // Otherwise just add it to the UnknownStreamKey array and key
-				streamMatchesMap[UnknownStreamKey] = append(streamMatchesMap[UnknownStreamKey], matchToAdd)
+				leagueMatch.Matches[UnknownStreamKey] = append(leagueMatch.Matches[UnknownStreamKey], match)
 			}
 		}
 
-		leagueMatch.Matches = streamMatchesMap
 		leagueMatches = append(leagueMatches, leagueMatch)
 	}
 
@@ -439,11 +415,11 @@ func (bc *DotaBotChannel) UpdateDailyMessageTime(timeString string) error {
 	return nil
 }
 
-func (bc *DotaBotChannel) GetLeagues() []schema.LeagueTier {
+func (bc *DotaBotChannel) GetLeagues() []types.Tier {
 	return bc.config.Leagues
 }
 
-func (bc *DotaBotChannel) AddLeague(league schema.LeagueTier) bool {
+func (bc *DotaBotChannel) AddLeague(league types.Tier) bool {
 	// TODO: Maybe change to error response
 	for _, existingLeague := range bc.config.Leagues {
 		if existingLeague == league {
@@ -455,8 +431,8 @@ func (bc *DotaBotChannel) AddLeague(league schema.LeagueTier) bool {
 	return true
 }
 
-func (bc *DotaBotChannel) RemoveLeague(league schema.LeagueTier) {
-	var leagues []schema.LeagueTier
+func (bc *DotaBotChannel) RemoveLeague(league types.Tier) {
+	var leagues []types.Tier
 	for _, existingLeague := range bc.config.Leagues {
 		if existingLeague != league {
 			leagues = append(leagues, existingLeague)
@@ -507,4 +483,35 @@ func (bc *DotaBotChannel) getActualTimezoneLocation(timezone string) (string, er
 		return "", fmt.Errorf("timezone is unsupported")
 	}
 	return actualTimezone, nil
+}
+
+func (bc *DotaBotChannel) getChannel() (*discordgo.Channel, error) {
+	if bc.channel == nil {
+		channel, err := bc.session.Channel(bc.config.ChannelID)
+		if err != nil {
+			return nil, err
+		}
+		bc.channel = channel
+	}
+	return bc.channel, nil
+}
+
+func (bc *DotaBotChannel) getGuild(guildID string) (*discordgo.Guild, error) {
+	guild, err := bc.session.Guild(guildID)
+	if err != nil {
+		return nil, err
+	}
+	return guild, nil
+}
+
+func (bc *DotaBotChannel) getChannelIdentifier() string {
+	channel, err := bc.getChannel()
+	if err != nil {
+		return bc.config.ChannelID
+	}
+	guild, err := bc.getGuild(channel.GuildID)
+	if err != nil {
+		return channel.Name
+	}
+	return fmt.Sprintf("%s:%s", guild.Name, channel.Name)
 }

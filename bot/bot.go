@@ -337,10 +337,11 @@ var (
 )
 
 type DotaBot struct {
-	guildID          string
-	dataSourceClient datasource.Client
-	discordSession   *discordgo.Session
-	channels         map[string]*DotaBotChannel
+	guildID            string
+	dataSourceClient   datasource.Client
+	discordSession     *discordgo.Session
+	channels           map[string]*DotaBotChannel
+	registeredCommands []*discordgo.ApplicationCommand
 }
 
 func NewDotaBot(dataSourceClient datasource.Client) *DotaBot {
@@ -361,6 +362,10 @@ func (b *DotaBot) Initialise(token string) error {
 		log.Println("Error creating Discord session", err)
 		return err
 	}
+
+	dg.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
+		log.Printf("Bot is now ready")
+	})
 
 	dg.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if command, ok := handlers[i.ApplicationCommandData().Name]; ok {
@@ -389,13 +394,15 @@ func (b *DotaBot) Initialise(token string) error {
 			config.Update()
 		}
 
-		for _, command := range commands {
+		b.registeredCommands = make([]*discordgo.ApplicationCommand, len(commands))
+		for i, command := range commands {
 			cmd, err := b.discordSession.ApplicationCommandCreate(b.discordSession.State.User.ID, b.guildID, command)
 			if err != nil {
 				log.Println("Error creating command", err)
 			} else {
-				log.Println("Command registered", cmd)
+				log.Printf("Command %v registered", command.Name)
 			}
+			b.registeredCommands[i] = cmd
 		}
 	} else {
 		log.Println("Error when opening session", err)
@@ -405,21 +412,17 @@ func (b *DotaBot) Initialise(token string) error {
 
 func (b *DotaBot) Shutdown() {
 	// Remove all registered commands
-	registeredCommands, err := b.discordSession.ApplicationCommands(b.discordSession.State.User.ID, b.guildID)
+	for _, command := range b.registeredCommands {
+		err := b.discordSession.ApplicationCommandDelete(b.discordSession.State.User.ID, b.guildID, command.ID)
+		if err != nil {
+			log.Printf("Command %v failed to be removed", command.Name)
+		} else {
+			log.Printf("Command %v removed successfully", command.Name)
+		}
+	}
+
+	err := b.discordSession.Close()
 	if err != nil {
 		log.Println("Error when closing Discord session", err)
 	}
-
-	for _, command := range registeredCommands {
-		b.discordSession.ApplicationCommandDelete(b.discordSession.State.User.ID, b.guildID, command.ID)
-	}
-
-	err = b.discordSession.Close()
-	if err != nil {
-		log.Println("Error when closing Discord session", err)
-	}
-}
-
-func (b *DotaBot) sendDailyMatches() {
-
 }

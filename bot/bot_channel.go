@@ -284,6 +284,9 @@ func (bc *DotaBotChannel) SendMatchesOfTheDay() ChannelResponse {
 
 func (bc *DotaBotChannel) generateDailyMatchMessage(leagueMatches LeagueMatchesSet) string {
 	message := ""
+	if len(leagueMatches.Matches) == 0 {
+		log.Printf("There are no matches in league %v", leagueMatches.League.DisplayName)
+	}
 	for streamUrl, streamMatches := range leagueMatches.Matches {
 		if streamUrl == UnknownStreamKey {
 			streamUrl = "https://twitch.tv (Channel Unknown)"
@@ -337,7 +340,7 @@ func (bc *DotaBotChannel) getMatchesToday() (ChannelResponse, []LeagueMatchesSet
 			}
 			matches = append(matches, match)
 		}
-		if len(league.Matches) == 0 {
+		if len(matches) == 0 {
 			continue
 		}
 

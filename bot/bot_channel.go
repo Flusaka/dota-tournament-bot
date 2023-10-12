@@ -291,7 +291,7 @@ func (bc *DotaBotChannel) generateDailyMatchMessage(leagueMatches LeagueMatchesS
 		if streamUrl == UnknownStreamKey {
 			streamUrl = "https://twitch.tv (Channel Unknown)"
 		}
-		message += "Games on: " + streamUrl + "\n\n"
+		message += "Games on: " + streamUrl + "\n"
 		for _, streamMatch := range streamMatches {
 			convertedTime, err := bc.GetTimeInZone(streamMatch.ScheduledTime)
 			if err != nil {
@@ -299,6 +299,7 @@ func (bc *DotaBotChannel) generateDailyMatchMessage(leagueMatches LeagueMatchesS
 			}
 			message += convertedTime.Format(time.Kitchen) + " - " + streamMatch.Radiant.DisplayName + " vs " + streamMatch.Dire.DisplayName + "\n"
 		}
+		message += "\n"
 	}
 	return message
 }

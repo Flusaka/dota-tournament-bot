@@ -170,7 +170,14 @@ func (bc *DotaBotChannel) calculateTimeUntilNextNotification() (time.Duration, e
 }
 
 func (bc *DotaBotChannel) SendMatchesOfTheDayInResponseTo(interaction *discordgo.InteractionCreate) {
-	result, leagueMatchesSet := bc.getMatchesToday()
+	startingHour := 0
+	startingMinute := 0
+
+	if bc.config.DailyNotificationsEnabled {
+		startingHour = bc.config.DailyMessageHour
+		startingMinute = bc.config.DailyMessageMinute
+	}
+	result, leagueMatchesSet := bc.getMatchesToday(startingHour, startingMinute)
 
 	switch result {
 	case ChannelResponseSuccess:
@@ -243,7 +250,7 @@ func (bc *DotaBotChannel) SendMatchesOfTheDayInResponseTo(interaction *discordgo
 }
 
 func (bc *DotaBotChannel) SendMatchesOfTheDay() ChannelResponse {
-	result, leagueMatchesSet := bc.getMatchesToday()
+	result, leagueMatchesSet := bc.getMatchesToday(bc.config.DailyMessageHour, bc.config.DailyMessageMinute)
 
 	switch result {
 	case ChannelResponseSuccess:
@@ -304,7 +311,7 @@ func (bc *DotaBotChannel) generateDailyMatchMessage(leagueMatches LeagueMatchesS
 	return message
 }
 
-func (bc *DotaBotChannel) getMatchesToday() (ChannelResponse, []LeagueMatchesSet) {
+func (bc *DotaBotChannel) getMatchesToday(startingHour int, startingMinute int) (ChannelResponse, []LeagueMatchesSet) {
 	// If there's no league tiers configured, let the channel know!
 	tiers := bc.GetLeagues()
 	if len(tiers) == 0 {
@@ -335,7 +342,7 @@ func (bc *DotaBotChannel) getMatchesToday() (ChannelResponse, []LeagueMatchesSet
 		var matches []*types.Match
 		for _, match := range league.Matches {
 			// TODO: Check actual time if match already completed
-			isWithinDay := bc.IsTimeWithinDay(match.ScheduledTime)
+			isWithinDay := bc.IsTimeWithinDayFrom(match.ScheduledTime, startingHour, startingMinute)
 			if !isWithinDay {
 				continue
 			}
@@ -454,7 +461,7 @@ func (bc *DotaBotChannel) GetTimeInZone(timestamp int64) (time.Time, error) {
 	return time.Unix(timestamp, 0).In(parsingZone), nil
 }
 
-func (bc *DotaBotChannel) IsTimeWithinDay(timestamp int64) bool {
+func (bc *DotaBotChannel) IsTimeWithinDayFrom(timestamp int64, startingHour int, startingMinute int) bool {
 	// This is a bit awkward, need to think of a better way to break down this logic
 	parsingZone, err := bc.getParsingZone()
 	if err != nil {
@@ -466,7 +473,7 @@ func (bc *DotaBotChannel) IsTimeWithinDay(timestamp int64) bool {
 	}
 
 	currentTime := time.Now()
-	startOfDay := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 0, 0, 0, 0, parsingZone)
+	startOfDay := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), startingHour, startingMinute, 0, 0, parsingZone)
 	endOfDay := startOfDay.Add(time.Hour * 24).Add(-time.Second)
 	return convertedTime.After(startOfDay) && convertedTime.Before(endOfDay)
 }

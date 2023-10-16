@@ -16,7 +16,6 @@ type ChannelResponse uint8
 
 const (
 	// Result constants from any bot method calls
-
 	ChannelResponseSuccess                 ChannelResponse = 0
 	ChannelResponseNoLeagues               ChannelResponse = 1
 	ChannelResponseFailedToRetrieveLeagues ChannelResponse = 2
@@ -25,6 +24,8 @@ const (
 
 	// Unknown stream key
 	UnknownStreamKey = "UnknownStream"
+
+	NotificationSelectMenuID = "notificationSelectMenu"
 )
 
 var (
@@ -191,20 +192,56 @@ func (bc *DotaBotChannel) SendMatchesOfTheDayInResponseTo(interaction *discordgo
 				if len(matchesMessage) > 0 {
 					fullMessage := message + matchesMessage
 					// If we haven't responded to the interaction yet, do that first
+					minValues := 1
+					matchNotificationOptions := bc.buildNotificationSelectionOptions(leagueMatches)
 					if !interactionRespondedTo {
 						err := bc.session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
 							Type: discordgo.InteractionResponseChannelMessageWithSource,
 							Data: &discordgo.InteractionResponseData{
 								Content: fullMessage,
 								Flags:   discordgo.MessageFlagsSuppressEmbeds,
+								Components: []discordgo.MessageComponent{
+									discordgo.ActionsRow{
+										Components: []discordgo.MessageComponent{
+											discordgo.SelectMenu{
+												CustomID:    NotificationSelectMenuID,
+												Placeholder: "Select matches to be notified of",
+												MenuType:    discordgo.StringSelectMenu,
+												MinValues:   &minValues,
+												MaxValues:   len(matchNotificationOptions),
+												Options:     matchNotificationOptions,
+											},
+										},
+									},
+								},
 							},
 						})
 						// If there was no error responding to the interaction, it's been responded to
 						interactionRespondedTo = err == nil
+						if err != nil {
+							log.Printf("Error responding to /today %v", err)
+						}
 					} else {
 						// Otherwise, just send a regular message
 						// Send the message and get the Discord message struct back
-						discordMsg, err := bc.session.ChannelMessageSend(bc.config.ChannelID, fullMessage)
+						messageSend := &discordgo.MessageSend{
+							Content: fullMessage,
+							Components: []discordgo.MessageComponent{
+								discordgo.ActionsRow{
+									Components: []discordgo.MessageComponent{
+										discordgo.SelectMenu{
+											CustomID:    NotificationSelectMenuID,
+											Placeholder: "Select matches to be notified of",
+											MenuType:    discordgo.StringSelectMenu,
+											MinValues:   &minValues,
+											MaxValues:   len(matchNotificationOptions),
+											Options:     matchNotificationOptions,
+										},
+									},
+								},
+							},
+						}
+						discordMsg, err := bc.session.ChannelMessageSendComplex(bc.config.ChannelID, messageSend)
 						if err != nil {
 							log.Println("Error sending message to", bc.getChannelIdentifier(), err.Error())
 						} else {
@@ -289,6 +326,23 @@ func (bc *DotaBotChannel) SendMatchesOfTheDay() ChannelResponse {
 	return result
 }
 
+func (bc *DotaBotChannel) HandleMessageComponentInteraction(interaction *discordgo.InteractionCreate) {
+	messageComponentData := interaction.MessageComponentData()
+	switch messageComponentData.CustomID {
+	case NotificationSelectMenuID:
+		{
+			bc.session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: "Notifications updated",
+				},
+			},
+			)
+			break
+		}
+	}
+}
+
 func (bc *DotaBotChannel) generateDailyMatchMessage(leagueMatches LeagueMatchesSet) string {
 	message := ""
 	if len(leagueMatches.Matches) == 0 {
@@ -309,6 +363,22 @@ func (bc *DotaBotChannel) generateDailyMatchMessage(leagueMatches LeagueMatchesS
 		message += "\n"
 	}
 	return message
+}
+
+func (bc *DotaBotChannel) buildNotificationSelectionOptions(leagueMatches LeagueMatchesSet) []discordgo.SelectMenuOption {
+	var options []discordgo.SelectMenuOption
+	for _, streamMatches := range leagueMatches.Matches {
+		for _, match := range streamMatches {
+			options = append(options, discordgo.SelectMenuOption{
+				Label:       fmt.Sprintf("%s vs %s", match.Radiant.DisplayName, match.Dire.DisplayName),
+				Value:       fmt.Sprintf("%s-%s", match.Radiant.DisplayName, match.Dire.DisplayName),
+				Description: "",
+				Emoji:       discordgo.ComponentEmoji{},
+				Default:     false,
+			})
+		}
+	}
+	return options
 }
 
 func (bc *DotaBotChannel) getMatchesToday(startingHour int, startingMinute int) (ChannelResponse, []LeagueMatchesSet) {

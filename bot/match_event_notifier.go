@@ -2,6 +2,7 @@ package bot
 
 import (
 	"github.com/flusaka/dota-tournament-bot/datasource/types"
+	"golang.org/x/exp/slices"
 	"sync"
 	"time"
 )
@@ -15,12 +16,14 @@ type MatchEventNotifier struct {
 	startedNotifications map[int16]*MatchStartedNotification
 	MatchStarted         chan *MatchStartedNotification
 	mux                  sync.Mutex
+	cancel               <-chan bool
 }
 
-func NewMatchEventNotifier() *MatchEventNotifier {
+func NewMatchEventNotifier(cancel <-chan bool) *MatchEventNotifier {
 	matchEventNotifier := &MatchEventNotifier{
 		startedNotifications: make(map[int16]*MatchStartedNotification),
 		MatchStarted:         make(chan *MatchStartedNotification, 5),
+		cancel:               cancel,
 	}
 
 	return matchEventNotifier
@@ -31,8 +34,9 @@ func (r *MatchEventNotifier) AddUserToNotificationsForMatch(match *types.Match, 
 	defer r.mux.Unlock()
 
 	if existing, ok := r.startedNotifications[match.ID]; ok {
-		// TODO: Don't append if user already exists
-		existing.Users = append(existing.Users, userID)
+		if !slices.Contains(existing.Users, userID) {
+			existing.Users = append(existing.Users, userID)
+		}
 	} else {
 		notification := &MatchStartedNotification{
 			Users: []string{userID},
@@ -52,12 +56,23 @@ func (r *MatchEventNotifier) startMatchTicker(notification *MatchStartedNotifica
 		ticker := time.NewTicker(duration)
 		defer ticker.Stop()
 
-		<-ticker.C
+		for {
+			select {
+			case <-ticker.C:
+				{
 
-		r.mux.Lock()
-		delete(r.startedNotifications, notification.Match.ID)
-		r.mux.Unlock()
+					r.mux.Lock()
+					delete(r.startedNotifications, notification.Match.ID)
+					r.mux.Unlock()
 
-		r.MatchStarted <- notification
+					r.MatchStarted <- notification
+					return
+				}
+			case <-r.cancel:
+				{
+					return
+				}
+			}
+		}
 	}()
 }

@@ -6,7 +6,9 @@ require (
 	github.com/Khan/genqlient v0.5.0
 	github.com/bwmarrin/discordgo v0.27.1
 	github.com/kamva/mgm/v3 v3.4.1
+	github.com/stretchr/testify v1.7.0
 	go.mongodb.org/mongo-driver v1.10.3
+	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 )
 
 require (
@@ -18,7 +20,6 @@ require (
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/stretchr/testify v1.7.0 // indirect
 	github.com/vektah/gqlparser/v2 v2.4.5 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.1 // indirect

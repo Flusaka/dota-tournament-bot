@@ -8,7 +8,8 @@ import (
 )
 
 func TestSingleUserReceivesNotificationOfMatchStart(t *testing.T) {
-	matchNotifier := NewMatchEventNotifier()
+	cancel := make(chan bool, 1)
+	matchNotifier := NewMatchEventNotifier(cancel)
 	match := &types.Match{
 		ID:            0,
 		Radiant:       &types.Team{DisplayName: "OG"},
@@ -17,6 +18,7 @@ func TestSingleUserReceivesNotificationOfMatchStart(t *testing.T) {
 		StreamUrl:     "https://twitch.tv",
 	}
 	uid := "userid1"
+	matchNotifier.AddUserToNotificationsForMatch(match, uid)
 	matchNotifier.AddUserToNotificationsForMatch(match, uid)
 
 	assert.Contains(t, matchNotifier.startedNotifications, match.ID)
@@ -31,7 +33,8 @@ func TestSingleUserReceivesNotificationOfMatchStart(t *testing.T) {
 }
 
 func TestMultipleUsersReceivesNotificationOfMatchStart(t *testing.T) {
-	matchNotifier := NewMatchEventNotifier()
+	cancel := make(chan bool, 1)
+	matchNotifier := NewMatchEventNotifier(cancel)
 	users := []string{"userid1",
 		"userid2",
 		"userid3",
@@ -64,7 +67,8 @@ func TestMultipleUsersReceivesNotificationOfMatchStart(t *testing.T) {
 }
 
 func TestSingleUserReceivesNotificationsOfMultipleMatchStarts(t *testing.T) {
-	matchNotifier := NewMatchEventNotifier()
+	cancel := make(chan bool, 1)
+	matchNotifier := NewMatchEventNotifier(cancel)
 	match := &types.Match{
 		ID:            0,
 		Radiant:       &types.Team{DisplayName: "OG"},
@@ -106,7 +110,8 @@ func TestSingleUserReceivesNotificationsOfMultipleMatchStarts(t *testing.T) {
 }
 
 func TestMultipleUsersReceivesNotificationsOfMultipleMatchStarts(t *testing.T) {
-	matchNotifier := NewMatchEventNotifier()
+	cancel := make(chan bool, 1)
+	matchNotifier := NewMatchEventNotifier(cancel)
 	users := []string{"userid1",
 		"userid2",
 		"userid3",

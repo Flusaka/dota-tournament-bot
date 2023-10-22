@@ -71,24 +71,26 @@ type DotaBotChannel struct {
 
 func NewDotaBotChannel(session *discordgo.Session, channelID string, dataSourceClient datasource.Client) *DotaBotChannel {
 	initialConfig := models.NewChannelConfig(channelID)
+	cancelMatchEventsListening := make(chan bool, 1)
 	dotaBotChannel := &DotaBotChannel{
 		session:                    session,
 		config:                     initialConfig,
 		dataSourceClient:           dataSourceClient,
-		matchEventNotifier:         NewMatchEventNotifier(),
-		cancelMatchEventsListening: make(chan bool, 1),
+		matchEventNotifier:         NewMatchEventNotifier(cancelMatchEventsListening),
+		cancelMatchEventsListening: cancelMatchEventsListening,
 	}
 	dotaBotChannel.listenForMatchEvents()
 	return dotaBotChannel
 }
 
 func NewDotaBotChannelWithConfig(session *discordgo.Session, config *models.ChannelConfig, dataSourceClient datasource.Client) *DotaBotChannel {
+	cancelMatchEventsListening := make(chan bool, 1)
 	dotaBotChannel := &DotaBotChannel{
 		session:                    session,
 		config:                     config,
 		dataSourceClient:           dataSourceClient,
-		matchEventNotifier:         NewMatchEventNotifier(),
-		cancelMatchEventsListening: make(chan bool, 1),
+		matchEventNotifier:         NewMatchEventNotifier(cancelMatchEventsListening),
+		cancelMatchEventsListening: cancelMatchEventsListening,
 	}
 
 	if config.DailyNotificationsEnabled {
@@ -104,6 +106,7 @@ func (bc *DotaBotChannel) Start() {
 }
 
 func (bc *DotaBotChannel) Stop() {
+	close(bc.cancelMatchEventsListening)
 	bc.stopDailyNotifications()
 	bc.config.Delete()
 }

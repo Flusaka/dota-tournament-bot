@@ -37,7 +37,7 @@ func (receiver FakeDataSourceClient) GetLeagues(query *queries.GetLeagues) ([]*t
 func loadLeagues() ([]*types.League, error) {
 	var leagues []*types.League
 	if data, err := os.ReadFile(leagueStoredFilename); err != nil {
-		now := time.Now().Truncate(time.Minute)
+		now := time.Now().Round(time.Minute)
 		// If there is no file, generate data and store to it
 		leagues = []*types.League{
 			{

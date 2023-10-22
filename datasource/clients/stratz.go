@@ -41,7 +41,7 @@ func (receiver StratzDataSourceClient) GetLeagues(query *queries.GetLeagues) ([]
 						}
 					}
 				}
-				match := types.NewMatch(radiantTeam, direTeam, node.ScheduledTime, streamUrl)
+				match := types.NewMatch(node.Id, radiantTeam, direTeam, node.ScheduledTime, streamUrl)
 				matches = append(matches, match)
 			}
 		}

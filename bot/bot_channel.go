@@ -9,6 +9,8 @@ import (
 	"github.com/flusaka/dota-tournament-bot/models"
 	"log"
 	"sort"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -26,6 +28,8 @@ const (
 	UnknownStreamKey = "UnknownStream"
 
 	NotificationSelectMenuID = "notificationSelectMenu"
+
+	NotificationValueDelimiter = ","
 )
 
 var (
@@ -53,40 +57,44 @@ type LeagueMatchesSet struct {
 }
 
 type DotaBotChannel struct {
-	session                  *discordgo.Session
-	config                   *models.ChannelConfig
-	dataSourceClient         datasource.Client
-	notificationTicker       *time.Ticker
-	cancelDailyNotifications chan bool
-	channel                  *discordgo.Channel
+	session                    *discordgo.Session
+	config                     *models.ChannelConfig
+	dataSourceClient           datasource.Client
+	notificationTicker         *time.Ticker
+	cancelDailyNotifications   chan bool
+	cancelMatchEventsListening chan bool
+	channel                    *discordgo.Channel
+	matchEventNotifier         *MatchEventNotifier
+	cachedMatches              map[int]map[int16]*types.Match
 }
 
 func NewDotaBotChannel(session *discordgo.Session, channelID string, dataSourceClient datasource.Client) *DotaBotChannel {
 	initialConfig := models.NewChannelConfig(channelID)
-	return &DotaBotChannel{
-		session,
-		initialConfig,
-		dataSourceClient,
-		nil,
-		nil,
-		nil,
+	dotaBotChannel := &DotaBotChannel{
+		session:                    session,
+		config:                     initialConfig,
+		dataSourceClient:           dataSourceClient,
+		matchEventNotifier:         NewMatchEventNotifier(),
+		cancelMatchEventsListening: make(chan bool, 1),
 	}
+	dotaBotChannel.listenForMatchEvents()
+	return dotaBotChannel
 }
 
 func NewDotaBotChannelWithConfig(session *discordgo.Session, config *models.ChannelConfig, dataSourceClient datasource.Client) *DotaBotChannel {
 	dotaBotChannel := &DotaBotChannel{
-		session,
-		config,
-		dataSourceClient,
-		nil,
-		nil,
-		nil,
+		session:                    session,
+		config:                     config,
+		dataSourceClient:           dataSourceClient,
+		matchEventNotifier:         NewMatchEventNotifier(),
+		cancelMatchEventsListening: make(chan bool, 1),
 	}
 
 	if config.DailyNotificationsEnabled {
 		dotaBotChannel.startDailyNotifications()
 	}
 
+	dotaBotChannel.listenForMatchEvents()
 	return dotaBotChannel
 }
 
@@ -178,7 +186,7 @@ func (bc *DotaBotChannel) SendMatchesOfTheDayInResponseTo(interaction *discordgo
 		startingHour = bc.config.DailyMessageHour
 		startingMinute = bc.config.DailyMessageMinute
 	}
-	result, leagueMatchesSet := bc.getMatchesToday(startingHour, startingMinute)
+	result, leagueMatchesSet := bc.getMatchesToday(startingHour, startingMinute, true)
 
 	switch result {
 	case ChannelResponseSuccess:
@@ -287,7 +295,7 @@ func (bc *DotaBotChannel) SendMatchesOfTheDayInResponseTo(interaction *discordgo
 }
 
 func (bc *DotaBotChannel) SendMatchesOfTheDay() ChannelResponse {
-	result, leagueMatchesSet := bc.getMatchesToday(bc.config.DailyMessageHour, bc.config.DailyMessageMinute)
+	result, leagueMatchesSet := bc.getMatchesToday(bc.config.DailyMessageHour, bc.config.DailyMessageMinute, true)
 
 	switch result {
 	case ChannelResponseSuccess:
@@ -331,10 +339,31 @@ func (bc *DotaBotChannel) HandleMessageComponentInteraction(interaction *discord
 	switch messageComponentData.CustomID {
 	case NotificationSelectMenuID:
 		{
+			selectedValues := messageComponentData.Values
+			for _, value := range selectedValues {
+				// Split at delimiter to retrieve league and match ID
+				split := strings.Split(value, NotificationValueDelimiter)
+				leagueIDValue := split[0]
+				matchIDValue := split[1]
+
+				leagueIDParsed, _ := strconv.ParseInt(leagueIDValue, 10, 32)
+				matchIDParsed, _ := strconv.ParseInt(matchIDValue, 10, 16)
+
+				leagueID := int(leagueIDParsed)
+				matchID := int16(matchIDParsed)
+
+				// Find the cached match and add a notification for
+				if league, ok := bc.cachedMatches[leagueID]; ok {
+					if match, ok := league[matchID]; ok {
+						bc.matchEventNotifier.AddUserToNotificationsForMatch(match, interaction.Member.User.ID)
+					}
+				}
+			}
+
 			bc.session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Type: discordgo.InteractionResponseDeferredMessageUpdate,
 				Data: &discordgo.InteractionResponseData{
-					Content: "Notifications updated",
+					Content: "Notifications have been updated!",
 				},
 			},
 			)
@@ -369,9 +398,10 @@ func (bc *DotaBotChannel) buildNotificationSelectionOptions(leagueMatches League
 	var options []discordgo.SelectMenuOption
 	for _, streamMatches := range leagueMatches.Matches {
 		for _, match := range streamMatches {
+			valueParts := []string{strconv.Itoa(leagueMatches.League.ID), strconv.Itoa(int(match.ID))}
 			options = append(options, discordgo.SelectMenuOption{
 				Label:       fmt.Sprintf("%s vs %s", match.Radiant.DisplayName, match.Dire.DisplayName),
-				Value:       fmt.Sprintf("%s-%s", match.Radiant.DisplayName, match.Dire.DisplayName),
+				Value:       strings.Join(valueParts, NotificationValueDelimiter),
 				Description: "",
 				Emoji:       discordgo.ComponentEmoji{},
 				Default:     false,
@@ -381,7 +411,7 @@ func (bc *DotaBotChannel) buildNotificationSelectionOptions(leagueMatches League
 	return options
 }
 
-func (bc *DotaBotChannel) getMatchesToday(startingHour int, startingMinute int) (ChannelResponse, []LeagueMatchesSet) {
+func (bc *DotaBotChannel) getMatchesToday(startingHour int, startingMinute int, cache bool) (ChannelResponse, []LeagueMatchesSet) {
 	// If there's no league tiers configured, let the channel know!
 	tiers := bc.GetLeagues()
 	if len(tiers) == 0 {
@@ -392,6 +422,17 @@ func (bc *DotaBotChannel) getMatchesToday(startingHour int, startingMinute int) 
 	leagues, err := bc.dataSourceClient.GetLeagues(query)
 	if err != nil {
 		return ChannelResponseFailedToRetrieveLeagues, nil
+	}
+
+	if cache {
+		// TODO: the logic to cache matches should be moved elsewhere
+		bc.cachedMatches = make(map[int]map[int16]*types.Match, len(leagues))
+		for _, league := range leagues {
+			bc.cachedMatches[league.ID] = make(map[int16]*types.Match, len(league.Matches))
+			for _, match := range league.Matches {
+				bc.cachedMatches[league.ID][match.ID] = match
+			}
+		}
 	}
 
 	if len(leagues) == 0 {
@@ -548,6 +589,34 @@ func (bc *DotaBotChannel) IsTimeWithinDayFrom(timestamp int64, startingHour int,
 	return convertedTime.After(startOfDay) && convertedTime.Before(endOfDay)
 }
 
+func (bc *DotaBotChannel) listenForMatchEvents() {
+	go func() {
+		for {
+			select {
+			case matchStarted := <-bc.matchEventNotifier.MatchStarted:
+				{
+					mentions := ""
+					for _, user := range matchStarted.Users {
+						mentions += fmt.Sprintf("<@%s> ", user)
+					}
+					bc.SendMessageWithoutEmbeds(
+						mentions + fmt.Sprintf("%s vs %s is now starting on %s",
+							matchStarted.Match.Radiant.DisplayName,
+							matchStarted.Match.Dire.DisplayName,
+							matchStarted.Match.StreamUrl,
+						),
+					)
+					break
+				}
+			case <-bc.cancelMatchEventsListening:
+				{
+					return
+				}
+			}
+		}
+	}()
+}
+
 func (bc *DotaBotChannel) getParsingZone() (*time.Location, error) {
 	actualTimezone, err := bc.getActualTimezoneLocation(bc.config.Timezone)
 	activeTimeZone, err := time.LoadLocation(actualTimezone)
@@ -595,4 +664,16 @@ func (bc *DotaBotChannel) getChannelIdentifier() string {
 		return channel.Name
 	}
 	return fmt.Sprintf("%s:%s", guild.Name, channel.Name)
+}
+
+func (bc *DotaBotChannel) SendMessageWithoutEmbeds(messageContent string) {
+	discordMsg, err := bc.session.ChannelMessageSend(bc.config.ChannelID, messageContent)
+	if err != nil {
+		log.Println("Error sending message to", bc.getChannelIdentifier(), err.Error())
+	} else {
+		// Suppress the embeds on the message from the stream links
+		editMessage := discordgo.NewMessageEdit(bc.config.ChannelID, discordMsg.ID)
+		editMessage.Flags |= discordgo.MessageFlagsSuppressEmbeds
+		bc.session.ChannelMessageEditComplex(editMessage)
+	}
 }

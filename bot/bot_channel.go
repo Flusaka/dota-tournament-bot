@@ -7,6 +7,7 @@ import (
 	"github.com/flusaka/dota-tournament-bot/datasource/queries"
 	"github.com/flusaka/dota-tournament-bot/datasource/types"
 	"github.com/flusaka/dota-tournament-bot/models"
+	"golang.org/x/exp/slices"
 	"log"
 	"sort"
 	"strconv"
@@ -236,24 +237,7 @@ func (bc *DotaBotChannel) SendMatchesOfTheDayInResponseTo(interaction *discordgo
 					} else {
 						// Otherwise, just send a regular message
 						// Send the message and get the Discord message struct back
-						messageSend := &discordgo.MessageSend{
-							Content: fullMessage,
-							Components: []discordgo.MessageComponent{
-								discordgo.ActionsRow{
-									Components: []discordgo.MessageComponent{
-										discordgo.SelectMenu{
-											CustomID:    NotificationSelectMenuID,
-											Placeholder: "Select matches to be notified of",
-											MenuType:    discordgo.StringSelectMenu,
-											MinValues:   &minValues,
-											MaxValues:   len(matchNotificationOptions),
-											Options:     matchNotificationOptions,
-										},
-									},
-								},
-							},
-						}
-						discordMsg, err := bc.session.ChannelMessageSendComplex(bc.config.ChannelID, messageSend)
+						discordMsg, err := bc.session.ChannelMessageSend(bc.config.ChannelID, fullMessage)
 						if err != nil {
 							log.Println("Error sending message to", bc.getChannelIdentifier(), err.Error())
 						} else {
@@ -309,9 +293,29 @@ func (bc *DotaBotChannel) SendMatchesOfTheDay() ChannelResponse {
 			message := ":robot: " + leagueMatches.League.DisplayName + " games today!\n\n"
 			matchesMessage := bc.generateDailyMatchMessage(leagueMatches)
 
+			minValues := 1
+			matchNotificationOptions := bc.buildNotificationSelectionOptions(leagueMatches)
+
 			if len(matchesMessage) > 0 {
 				// Send the message and get the Discord message struct back
-				discordMsg, err := bc.session.ChannelMessageSend(bc.config.ChannelID, message+matchesMessage)
+				messageSend := &discordgo.MessageSend{
+					Content: message + matchesMessage,
+					Components: []discordgo.MessageComponent{
+						discordgo.ActionsRow{
+							Components: []discordgo.MessageComponent{
+								discordgo.SelectMenu{
+									CustomID:    NotificationSelectMenuID,
+									Placeholder: "Select matches to be notified of",
+									MenuType:    discordgo.StringSelectMenu,
+									MinValues:   &minValues,
+									MaxValues:   len(matchNotificationOptions),
+									Options:     matchNotificationOptions,
+								},
+							},
+						},
+					},
+				}
+				discordMsg, err := bc.session.ChannelMessageSendComplex(bc.config.ChannelID, messageSend)
 				if err != nil {
 					log.Println("Error sending message to", bc.getChannelIdentifier(), err.Error())
 				} else {
@@ -343,6 +347,8 @@ func (bc *DotaBotChannel) HandleMessageComponentInteraction(interaction *discord
 	switch messageComponentData.CustomID {
 	case NotificationSelectMenuID:
 		{
+			subscribedMatches := bc.matchEventNotifier.GetSubscribedMatchesForUser(interaction.Member.User.ID)
+
 			selectedValues := messageComponentData.Values
 			for _, value := range selectedValues {
 				// Split at delimiter to retrieve league and match ID
@@ -362,6 +368,16 @@ func (bc *DotaBotChannel) HandleMessageComponentInteraction(interaction *discord
 						bc.matchEventNotifier.AddUserToNotificationsForMatch(match, interaction.Member.User.ID)
 					}
 				}
+
+				subscribedMatches = slices.DeleteFunc(subscribedMatches, func(el *types.Match) bool {
+					return el.ID == matchID
+				})
+			}
+
+			// Any leftover subscribed matches are ones that were removed, so we should delete our subscription for notifications
+			for _, subscription := range subscribedMatches {
+				log.Printf("Removing notification subscription for match %d for user %s", subscription.ID, interaction.Member.User.ID)
+				bc.matchEventNotifier.RemoveUserFromNotificationsForMatch(subscription, interaction.Member.User.ID)
 			}
 
 			bc.session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{

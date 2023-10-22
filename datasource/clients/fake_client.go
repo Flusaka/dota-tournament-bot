@@ -16,8 +16,6 @@ type FakeDataSourceClient struct {
 
 const (
 	leagueStoredFilename = "leagues.json"
-	letterBytes          = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	idLength             = 6
 )
 
 func NewFakeDataSourceClient(reset bool) FakeDataSourceClient {
@@ -49,56 +47,56 @@ func loadLeagues() ([]*types.League, error) {
 						Radiant:       &types.Team{DisplayName: "Team Liquid"},
 						Dire:          &types.Team{DisplayName: "Nigma Galaxy"},
 						ScheduledTime: now.Add(time.Minute * 1).UTC().Unix(),
-						StreamUrl:     "https://twitch.tv/dota2",
+						StreamUrl:     "https://twitch.tv/dota2ti",
 					},
 					{
 						ID:            randomID(),
 						Radiant:       &types.Team{DisplayName: "Tundra Esports"},
 						Dire:          &types.Team{DisplayName: "Gaimin Gladiators"},
 						ScheduledTime: now.Add(time.Minute * 1).UTC().Unix(),
-						StreamUrl:     "https://twitch.tv/dota2",
+						StreamUrl:     "https://twitch.tv/dota2ti",
 					},
 					{
 						ID:            randomID(),
 						Radiant:       &types.Team{DisplayName: "Team Spirit"},
 						Dire:          &types.Team{DisplayName: "PSG.LGD"},
 						ScheduledTime: now.Add(time.Minute * 2).UTC().Unix(),
-						StreamUrl:     "https://twitch.tv/dota2",
+						StreamUrl:     "https://twitch.tv/dota2ti",
 					},
 					{
 						ID:            randomID(),
 						Radiant:       &types.Team{DisplayName: "Team Aster"},
 						Dire:          &types.Team{DisplayName: "Shopify Rebellion"},
 						ScheduledTime: now.Add(time.Minute * 2).UTC().Unix(),
-						StreamUrl:     "https://twitch.tv/dota2",
+						StreamUrl:     "https://twitch.tv/dota2ti",
 					},
 					{
 						ID:            randomID(),
 						Radiant:       &types.Team{DisplayName: "Evil Geniuses"},
 						Dire:          &types.Team{DisplayName: "OG"},
 						ScheduledTime: now.Add(time.Minute * 3).UTC().Unix(),
-						StreamUrl:     "https://twitch.tv/dota2",
+						StreamUrl:     "https://twitch.tv/dota2ti",
 					},
 					{
 						ID:            randomID(),
 						Radiant:       &types.Team{DisplayName: "Team Secret"},
 						Dire:          &types.Team{DisplayName: "OG"},
 						ScheduledTime: now.Add(time.Minute * 3).UTC().Unix(),
-						StreamUrl:     "https://twitch.tv/dota2",
+						StreamUrl:     "https://twitch.tv/dota2ti",
 					},
 					{
 						ID:            randomID(),
 						Radiant:       &types.Team{DisplayName: "Team Liquid"},
 						Dire:          &types.Team{DisplayName: "Newbee"},
 						ScheduledTime: now.Add(time.Minute * 4).UTC().Unix(),
-						StreamUrl:     "https://twitch.tv/dota2",
+						StreamUrl:     "https://twitch.tv/dota2ti",
 					},
 					{
 						ID:            randomID(),
 						Radiant:       &types.Team{DisplayName: "PSG.LGD"},
 						Dire:          &types.Team{DisplayName: "OG"},
 						ScheduledTime: now.Add(time.Minute * 4).UTC().Unix(),
-						StreamUrl:     "https://twitch.tv/dota2",
+						StreamUrl:     "https://twitch.tv/dota2ti",
 					},
 				},
 			},

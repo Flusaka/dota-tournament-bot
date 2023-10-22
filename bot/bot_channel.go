@@ -191,7 +191,7 @@ func (bc *DotaBotChannel) SendMatchesOfTheDayInResponseTo(interaction *discordgo
 		startingHour = bc.config.DailyMessageHour
 		startingMinute = bc.config.DailyMessageMinute
 	}
-	result, leagueMatchesSet := bc.getMatchesToday(startingHour, startingMinute, true)
+	result, leagueMatchesSet := bc.getMatchesToday(startingHour, startingMinute, false)
 
 	switch result {
 	case ChannelResponseSuccess:
@@ -205,28 +205,12 @@ func (bc *DotaBotChannel) SendMatchesOfTheDayInResponseTo(interaction *discordgo
 				if len(matchesMessage) > 0 {
 					fullMessage := message + matchesMessage
 					// If we haven't responded to the interaction yet, do that first
-					minValues := 1
-					matchNotificationOptions := bc.buildNotificationSelectionOptions(leagueMatches)
 					if !interactionRespondedTo {
 						err := bc.session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
 							Type: discordgo.InteractionResponseChannelMessageWithSource,
 							Data: &discordgo.InteractionResponseData{
 								Content: fullMessage,
 								Flags:   discordgo.MessageFlagsSuppressEmbeds,
-								Components: []discordgo.MessageComponent{
-									discordgo.ActionsRow{
-										Components: []discordgo.MessageComponent{
-											discordgo.SelectMenu{
-												CustomID:    NotificationSelectMenuID,
-												Placeholder: "Select matches to be notified of",
-												MenuType:    discordgo.StringSelectMenu,
-												MinValues:   &minValues,
-												MaxValues:   len(matchNotificationOptions),
-												Options:     matchNotificationOptions,
-											},
-										},
-									},
-								},
 							},
 						})
 						// If there was no error responding to the interaction, it's been responded to
@@ -293,10 +277,10 @@ func (bc *DotaBotChannel) SendMatchesOfTheDay() ChannelResponse {
 			message := ":robot: " + leagueMatches.League.DisplayName + " games today!\n\n"
 			matchesMessage := bc.generateDailyMatchMessage(leagueMatches)
 
-			minValues := 1
-			matchNotificationOptions := bc.buildNotificationSelectionOptions(leagueMatches)
-
 			if len(matchesMessage) > 0 {
+				minValues := 0
+				matchNotificationOptions := bc.buildNotificationSelectionOptions(leagueMatches)
+
 				// Send the message and get the Discord message struct back
 				messageSend := &discordgo.MessageSend{
 					Content: message + matchesMessage,

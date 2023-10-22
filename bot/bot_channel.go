@@ -26,6 +26,7 @@ const (
 
 	// Unknown stream key
 	UnknownStreamKey = "UnknownStream"
+	UnknownStreamUrl = "https://twitch.tv (Channel Unknown)"
 
 	NotificationSelectMenuID = "notificationSelectMenu"
 
@@ -599,11 +600,15 @@ func (bc *DotaBotChannel) listenForMatchEvents() {
 					for _, user := range matchStarted.Users {
 						mentions += fmt.Sprintf("<@%s> ", user)
 					}
-					bc.SendMessageWithoutEmbeds(
-						mentions + fmt.Sprintf("%s vs %s is now starting on %s",
+					streamUrl := matchStarted.Match.StreamUrl
+					if streamUrl == "" {
+						streamUrl = UnknownStreamUrl
+					}
+					bc.sendMessageWithoutEmbeds(
+						mentions + fmt.Sprintf("%s vs %s is starting now on %s",
 							matchStarted.Match.Radiant.DisplayName,
 							matchStarted.Match.Dire.DisplayName,
-							matchStarted.Match.StreamUrl,
+							streamUrl,
 						),
 					)
 					break
@@ -666,7 +671,7 @@ func (bc *DotaBotChannel) getChannelIdentifier() string {
 	return fmt.Sprintf("%s:%s", guild.Name, channel.Name)
 }
 
-func (bc *DotaBotChannel) SendMessageWithoutEmbeds(messageContent string) {
+func (bc *DotaBotChannel) sendMessageWithoutEmbeds(messageContent string) {
 	discordMsg, err := bc.session.ChannelMessageSend(bc.config.ChannelID, messageContent)
 	if err != nil {
 		log.Println("Error sending message to", bc.getChannelIdentifier(), err.Error())

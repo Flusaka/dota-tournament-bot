@@ -368,8 +368,21 @@ func (b *DotaBot) Initialise(token string) error {
 	})
 
 	dg.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		if command, ok := handlers[i.ApplicationCommandData().Name]; ok {
-			command(b, s, i)
+		switch i.Type {
+		case discordgo.InteractionApplicationCommand:
+			{
+				if command, ok := handlers[i.ApplicationCommandData().Name]; ok {
+					command(b, s, i)
+				}
+				break
+			}
+		case discordgo.InteractionMessageComponent:
+			{
+				if channel, ok := b.channels[i.ChannelID]; ok {
+					channel.HandleMessageComponentInteraction(i)
+				}
+				break
+			}
 		}
 	})
 

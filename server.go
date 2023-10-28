@@ -42,7 +42,8 @@ func main() {
 	stratzClient := stratz.NewClient(stratzToken)
 	stratzClient.Initialise()
 
-	dataSourceClient := clients.NewStratzDataSourceClient(stratzClient)
+	dataSourceClient := clients.NewFakeDataSourceClient(true)
+	//dataSourceClient := clients.NewStratzDataSourceClient(stratzClient)
 
 	dotaBot := bot.NewDotaBotWithGuildID(dataSourceClient, guildID)
 	err = dotaBot.Initialise(discordToken)

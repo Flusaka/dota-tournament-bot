@@ -74,6 +74,8 @@ type GetLeaguesLeaguesLeagueTypeNodeGroupsLeagueNodeGroupTypeNodesLeagueNodeType
 	NodeType      LeagueNodeDefaultGroupEnum                                                                           `json:"nodeType"`
 	HasStarted    bool                                                                                                 `json:"hasStarted"`
 	IsCompleted   bool                                                                                                 `json:"isCompleted"`
+	WinningNodeId int16                                                                                                `json:"winningNodeId"`
+	LosingNodeId  int16                                                                                                `json:"losingNodeId"`
 	Streams       []GetLeaguesLeaguesLeagueTypeNodeGroupsLeagueNodeGroupTypeNodesLeagueNodeTypeStreamsLeagueStreamType `json:"streams"`
 	TeamOne       GetLeaguesLeaguesLeagueTypeNodeGroupsLeagueNodeGroupTypeNodesLeagueNodeTypeTeamOneTeamType           `json:"teamOne"`
 	TeamTwo       GetLeaguesLeaguesLeagueTypeNodeGroupsLeagueNodeGroupTypeNodesLeagueNodeTypeTeamTwoTeamType           `json:"teamTwo"`
@@ -107,6 +109,16 @@ func (v *GetLeaguesLeaguesLeagueTypeNodeGroupsLeagueNodeGroupTypeNodesLeagueNode
 // GetIsCompleted returns GetLeaguesLeaguesLeagueTypeNodeGroupsLeagueNodeGroupTypeNodesLeagueNodeType.IsCompleted, and is useful for accessing the field via an interface.
 func (v *GetLeaguesLeaguesLeagueTypeNodeGroupsLeagueNodeGroupTypeNodesLeagueNodeType) GetIsCompleted() bool {
 	return v.IsCompleted
+}
+
+// GetWinningNodeId returns GetLeaguesLeaguesLeagueTypeNodeGroupsLeagueNodeGroupTypeNodesLeagueNodeType.WinningNodeId, and is useful for accessing the field via an interface.
+func (v *GetLeaguesLeaguesLeagueTypeNodeGroupsLeagueNodeGroupTypeNodesLeagueNodeType) GetWinningNodeId() int16 {
+	return v.WinningNodeId
+}
+
+// GetLosingNodeId returns GetLeaguesLeaguesLeagueTypeNodeGroupsLeagueNodeGroupTypeNodesLeagueNodeType.LosingNodeId, and is useful for accessing the field via an interface.
+func (v *GetLeaguesLeaguesLeagueTypeNodeGroupsLeagueNodeGroupTypeNodesLeagueNodeType) GetLosingNodeId() int16 {
+	return v.LosingNodeId
 }
 
 // GetStreams returns GetLeaguesLeaguesLeagueTypeNodeGroupsLeagueNodeGroupTypeNodesLeagueNodeType.Streams, and is useful for accessing the field via an interface.
@@ -300,15 +312,8 @@ func (v *__GetLeaguesInput) GetTiers() []LeagueTier { return v.Tiers }
 // GetLeagueEnded returns __GetLeaguesInput.LeagueEnded, and is useful for accessing the field via an interface.
 func (v *__GetLeaguesInput) GetLeagueEnded() bool { return v.LeagueEnded }
 
-func GetLeagues(
-	ctx context.Context,
-	client graphql.Client,
-	tiers []LeagueTier,
-	leagueEnded bool,
-) (*GetLeaguesResponse, error) {
-	req := &graphql.Request{
-		OpName: "GetLeagues",
-		Query: `
+// The query or mutation executed by GetLeagues.
+const GetLeagues_Operation = `
 query GetLeagues ($tiers: [LeagueTier], $leagueEnded: Boolean) {
 	leagues(request: {tiers:$tiers,leagueEnded:$leagueEnded}) {
 		id
@@ -328,6 +333,8 @@ query GetLeagues ($tiers: [LeagueTier], $leagueEnded: Boolean) {
 				nodeType
 				hasStarted
 				isCompleted
+				winningNodeId
+				losingNodeId
 				streams {
 					id
 					languageId
@@ -348,7 +355,17 @@ query GetLeagues ($tiers: [LeagueTier], $leagueEnded: Boolean) {
 		}
 	}
 }
-`,
+`
+
+func GetLeagues(
+	ctx context.Context,
+	client graphql.Client,
+	tiers []LeagueTier,
+	leagueEnded bool,
+) (*GetLeaguesResponse, error) {
+	req := &graphql.Request{
+		OpName: "GetLeagues",
+		Query:  GetLeagues_Operation,
 		Variables: &__GetLeaguesInput{
 			Tiers:       tiers,
 			LeagueEnded: leagueEnded,

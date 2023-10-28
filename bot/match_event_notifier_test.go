@@ -12,8 +12,8 @@ func TestSingleUserReceivesNotificationOfMatchStart(t *testing.T) {
 	matchNotifier := NewMatchEventNotifier(cancel)
 	match := &types.Match{
 		ID:            0,
-		Radiant:       &types.Team{DisplayName: "OG"},
-		Dire:          &types.Team{DisplayName: "Team Liquid"},
+		TeamOne:       &types.Team{DisplayName: "OG"},
+		TeamTwo:       &types.Team{DisplayName: "Team Liquid"},
 		ScheduledTime: time.Now().Add(time.Second * 1).UTC().Unix(),
 		StreamUrl:     "https://twitch.tv",
 	}
@@ -43,8 +43,8 @@ func TestMultipleUsersReceivesNotificationOfMatchStart(t *testing.T) {
 	}
 	match := &types.Match{
 		ID:            0,
-		Radiant:       &types.Team{DisplayName: "OG"},
-		Dire:          &types.Team{DisplayName: "Team Liquid"},
+		TeamOne:       &types.Team{DisplayName: "OG"},
+		TeamTwo:       &types.Team{DisplayName: "Team Liquid"},
 		ScheduledTime: time.Now().Add(time.Second * 1).UTC().Unix(),
 		StreamUrl:     "https://twitch.tv",
 	}
@@ -71,15 +71,15 @@ func TestSingleUserReceivesNotificationsOfMultipleMatchStarts(t *testing.T) {
 	matchNotifier := NewMatchEventNotifier(cancel)
 	match := &types.Match{
 		ID:            0,
-		Radiant:       &types.Team{DisplayName: "OG"},
-		Dire:          &types.Team{DisplayName: "Team Liquid"},
+		TeamOne:       &types.Team{DisplayName: "OG"},
+		TeamTwo:       &types.Team{DisplayName: "Team Liquid"},
 		ScheduledTime: time.Now().Add(time.Second * 1).UTC().Unix(),
 		StreamUrl:     "https://twitch.tv",
 	}
 	anotherMatch := &types.Match{
 		ID:            1,
-		Radiant:       &types.Team{DisplayName: "Gaimin Gladiators"},
-		Dire:          &types.Team{DisplayName: "9Pandas"},
+		TeamOne:       &types.Team{DisplayName: "Gaimin Gladiators"},
+		TeamTwo:       &types.Team{DisplayName: "9Pandas"},
 		ScheduledTime: time.Now().Add(time.Second * 2).UTC().Unix(),
 		StreamUrl:     "https://twitch.tv",
 	}
@@ -121,35 +121,35 @@ func TestMultipleUsersReceivesNotificationsOfMultipleMatchStarts(t *testing.T) {
 	matches := []*types.Match{
 		{
 			ID:            0,
-			Radiant:       &types.Team{DisplayName: "OG"},
-			Dire:          &types.Team{DisplayName: "Team Liquid"},
+			TeamOne:       &types.Team{DisplayName: "OG"},
+			TeamTwo:       &types.Team{DisplayName: "Team Liquid"},
 			ScheduledTime: time.Now().Add(time.Second * 1).UTC().Unix(),
 			StreamUrl:     "https://twitch.tv",
 		},
 		{
 			ID:            1,
-			Radiant:       &types.Team{DisplayName: "OG"},
-			Dire:          &types.Team{DisplayName: "Team Liquid"},
+			TeamOne:       &types.Team{DisplayName: "OG"},
+			TeamTwo:       &types.Team{DisplayName: "Team Liquid"},
 			ScheduledTime: time.Now().Add(time.Second * 2).UTC().Unix(),
 			StreamUrl:     "https://twitch.tv",
 		}, {
 			ID:            2,
-			Radiant:       &types.Team{DisplayName: "OG"},
-			Dire:          &types.Team{DisplayName: "Team Liquid"},
+			TeamOne:       &types.Team{DisplayName: "OG"},
+			TeamTwo:       &types.Team{DisplayName: "Team Liquid"},
 			ScheduledTime: time.Now().Add(time.Second * 3).UTC().Unix(),
 			StreamUrl:     "https://twitch.tv",
 		},
 		{
 			ID:            3,
-			Radiant:       &types.Team{DisplayName: "OG"},
-			Dire:          &types.Team{DisplayName: "Team Liquid"},
+			TeamOne:       &types.Team{DisplayName: "OG"},
+			TeamTwo:       &types.Team{DisplayName: "Team Liquid"},
 			ScheduledTime: time.Now().Add(time.Second * 4).UTC().Unix(),
 			StreamUrl:     "https://twitch.tv",
 		},
 		{
 			ID:            4,
-			Radiant:       &types.Team{DisplayName: "OG"},
-			Dire:          &types.Team{DisplayName: "Team Liquid"},
+			TeamOne:       &types.Team{DisplayName: "OG"},
+			TeamTwo:       &types.Team{DisplayName: "Team Liquid"},
 			ScheduledTime: time.Now().Add(time.Second * 5).UTC().Unix(),
 			StreamUrl:     "https://twitch.tv",
 		},

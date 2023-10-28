@@ -391,11 +391,25 @@ func (bc *DotaBotChannel) generateDailyMatchMessage(leagueMatches LeagueMatchesS
 			if err != nil {
 				continue
 			}
-			message += convertedTime.Format(time.Kitchen) + " - " + streamMatch.Radiant.DisplayName + " vs " + streamMatch.Dire.DisplayName + "\n"
+
+			// If TeamOne is undetermined, use the TeamOneSourceMatch field to determine the teams to display
+			teamOneComponent := bc.generateTeamMessageComponent(streamMatch.TeamOne, streamMatch.TeamOneSourceMatch)
+			teamTwoComponent := bc.generateTeamMessageComponent(streamMatch.TeamTwo, streamMatch.TeamTwoSourceMatch)
+			message += convertedTime.Format(time.Kitchen) + " - " + teamOneComponent + " vs " + teamTwoComponent + "\n"
 		}
 		message += "\n"
 	}
 	return message
+}
+
+func (bc *DotaBotChannel) generateTeamMessageComponent(team *types.Team, teamSourceMatch *types.Match) string {
+	if team != nil {
+		return team.DisplayName
+	} else if teamSourceMatch != nil && teamSourceMatch.TeamOne != nil && teamSourceMatch.TeamTwo != nil {
+		return fmt.Sprintf("%s/%s", teamSourceMatch.TeamOne.DisplayName, teamSourceMatch.TeamTwo.DisplayName)
+	}
+
+	return "TBD"
 }
 
 func (bc *DotaBotChannel) buildNotificationSelectionOptions(leagueMatches LeagueMatchesSet) []discordgo.SelectMenuOption {
@@ -404,7 +418,7 @@ func (bc *DotaBotChannel) buildNotificationSelectionOptions(leagueMatches League
 		for _, match := range streamMatches {
 			valueParts := []string{strconv.Itoa(leagueMatches.League.ID), strconv.Itoa(int(match.ID))}
 			options = append(options, discordgo.SelectMenuOption{
-				Label:       fmt.Sprintf("%s vs %s", match.Radiant.DisplayName, match.Dire.DisplayName),
+				Label:       fmt.Sprintf("%s vs %s", match.TeamOne.DisplayName, match.TeamTwo.DisplayName),
 				Value:       strings.Join(valueParts, NotificationValueDelimiter),
 				Description: "",
 				Emoji:       discordgo.ComponentEmoji{},
@@ -609,8 +623,8 @@ func (bc *DotaBotChannel) listenForMatchEvents() {
 					}
 					bc.sendMessageWithoutEmbeds(
 						mentions + fmt.Sprintf("%s vs %s is starting now on %s",
-							matchStarted.Match.Radiant.DisplayName,
-							matchStarted.Match.Dire.DisplayName,
+							matchStarted.Match.TeamOne.DisplayName,
+							matchStarted.Match.TeamTwo.DisplayName,
 							streamUrl,
 						),
 					)

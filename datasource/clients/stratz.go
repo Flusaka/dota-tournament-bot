@@ -62,20 +62,26 @@ func (receiver StratzDataSourceClient) GetLeagues(query *queries.GetLeagues) ([]
 				// Now work out which matches are connected to each other, if any
 				if node.WinningNodeId != nil {
 					winningMatch := matchMap[*node.WinningNodeId]
-					if winningMatch.TeamOne == nil && winningMatch.TeamOneSourceMatch == nil {
-						winningMatch.TeamOneSourceMatch = match
-					} else if winningMatch.TeamTwo == nil && winningMatch.TeamTwoSourceMatch == nil {
-						winningMatch.TeamTwoSourceMatch = match
+					// Only add them if the game we're looking at is not completed
+					if !(*node.IsCompleted) {
+						if winningMatch.TeamOne == nil && winningMatch.TeamOneSourceMatch == nil {
+							winningMatch.TeamOneSourceMatch = match
+						} else if winningMatch.TeamTwo == nil && winningMatch.TeamTwoSourceMatch == nil {
+							winningMatch.TeamTwoSourceMatch = match
+						}
 					}
 					match.WinningTeamMatch = winningMatch
 				}
 
 				if node.LosingNodeId != nil {
 					losingMatch := matchMap[*node.LosingNodeId]
-					if losingMatch.TeamOne == nil && losingMatch.TeamOneSourceMatch == nil {
-						losingMatch.TeamOneSourceMatch = match
-					} else if losingMatch.TeamTwo == nil && losingMatch.TeamTwoSourceMatch == nil {
-						losingMatch.TeamTwoSourceMatch = match
+					// Only add them if the game we're looking at is not completed
+					if !(*node.IsCompleted) {
+						if losingMatch.TeamOne == nil && losingMatch.TeamOneSourceMatch == nil {
+							losingMatch.TeamOneSourceMatch = match
+						} else if losingMatch.TeamTwo == nil && losingMatch.TeamTwoSourceMatch == nil {
+							losingMatch.TeamTwoSourceMatch = match
+						}
 					}
 					match.LosingTeamMatch = losingMatch
 				}

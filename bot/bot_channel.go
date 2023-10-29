@@ -417,8 +417,12 @@ func (bc *DotaBotChannel) buildNotificationSelectionOptions(leagueMatches League
 	for _, streamMatches := range leagueMatches.Matches {
 		for _, match := range streamMatches {
 			valueParts := []string{strconv.Itoa(leagueMatches.League.ID), strconv.Itoa(int(match.ID))}
+
+			teamOneComponent := bc.generateTeamMessageComponent(match.TeamOne, match.TeamOneSourceMatch)
+			teamTwoComponent := bc.generateTeamMessageComponent(match.TeamTwo, match.TeamTwoSourceMatch)
+
 			options = append(options, discordgo.SelectMenuOption{
-				Label:       fmt.Sprintf("%s vs %s", match.TeamOne.DisplayName, match.TeamTwo.DisplayName),
+				Label:       fmt.Sprintf("%s vs %s", teamOneComponent, teamTwoComponent),
 				Value:       strings.Join(valueParts, NotificationValueDelimiter),
 				Description: "",
 				Emoji:       discordgo.ComponentEmoji{},

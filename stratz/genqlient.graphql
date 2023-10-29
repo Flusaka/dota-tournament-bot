@@ -17,6 +17,8 @@ query GetLeagues($tiers: [LeagueTier], $leagueEnded: Boolean) {
                 nodeType
                 hasStarted
                 isCompleted
+                winningNodeId
+                losingNodeId
                 streams {
                     id
                     languageId

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"github.com/flusaka/dota-tournament-bot/datasource/queries"
 	"github.com/flusaka/dota-tournament-bot/datasource/types"
+	"math"
+	"math/rand"
 	"os"
 	"time"
 )
@@ -16,7 +18,10 @@ const (
 	leagueStoredFilename = "leagues.json"
 )
 
-func NewFakeDataSourceClient() FakeDataSourceClient {
+func NewFakeDataSourceClient(reset bool) FakeDataSourceClient {
+	if reset {
+		deleteStoredLeagues()
+	}
 	leagues, _ := loadLeagues()
 	return FakeDataSourceClient{
 		leagues: leagues,
@@ -30,6 +35,54 @@ func (receiver FakeDataSourceClient) GetLeagues(query *queries.GetLeagues) ([]*t
 func loadLeagues() ([]*types.League, error) {
 	var leagues []*types.League
 	if data, err := os.ReadFile(leagueStoredFilename); err != nil {
+		now := time.Now().Round(time.Minute)
+
+		oneTeamProgressedMatch := &types.Match{
+			ID:            randomID(),
+			TeamOne:       &types.Team{DisplayName: "Gaimin Gladiators"},
+			TeamTwo:       nil,
+			ScheduledTime: now.Add(time.Minute * 5).UTC().Unix(),
+			StreamUrl:     "https://twitch.tv/dota2ti",
+		}
+		matchProgressing := &types.Match{
+			ID:            randomID(),
+			TeamOne:       &types.Team{DisplayName: "Team Liquid"},
+			TeamTwo:       &types.Team{DisplayName: "Newbee"},
+			ScheduledTime: now.Add(time.Minute * 4).UTC().Unix(),
+			StreamUrl:     "https://twitch.tv/dota2ti",
+		}
+
+		// Set the relevant match references
+		oneTeamProgressedMatch.TeamTwoSourceMatch = matchProgressing
+		matchProgressing.WinningTeamMatch = oneTeamProgressedMatch
+
+		noTeamsProgressedMatch := &types.Match{
+			ID:            randomID(),
+			TeamOne:       nil,
+			TeamTwo:       nil,
+			ScheduledTime: now.Add(time.Minute * 5).UTC().Unix(),
+			StreamUrl:     "https://twitch.tv/dota2ti",
+		}
+		firstMatchProgressing := &types.Match{
+			ID:            randomID(),
+			TeamOne:       &types.Team{DisplayName: "Team Liquid"},
+			TeamTwo:       &types.Team{DisplayName: "Newbee"},
+			ScheduledTime: now.Add(time.Minute * 4).UTC().Unix(),
+			StreamUrl:     "https://twitch.tv/dota2ti",
+		}
+		secondMatchProgressing := &types.Match{
+			ID:            randomID(),
+			TeamOne:       &types.Team{DisplayName: "OG"},
+			TeamTwo:       &types.Team{DisplayName: "Shopify Rebellion"},
+			ScheduledTime: now.Add(time.Minute * 4).UTC().Unix(),
+			StreamUrl:     "https://twitch.tv/dota2ti",
+		}
+
+		firstMatchProgressing.WinningTeamMatch = noTeamsProgressedMatch
+		secondMatchProgressing.WinningTeamMatch = noTeamsProgressedMatch
+		noTeamsProgressedMatch.TeamOneSourceMatch = firstMatchProgressing
+		noTeamsProgressedMatch.TeamTwoSourceMatch = secondMatchProgressing
+
 		// If there is no file, generate data and store to it
 		leagues = []*types.League{
 			{
@@ -37,53 +90,59 @@ func loadLeagues() ([]*types.League, error) {
 				DisplayName: "The International 2023",
 				Matches: []*types.Match{
 					{
-						Radiant:       &types.Team{DisplayName: "Team Liquid"},
-						Dire:          &types.Team{DisplayName: "Nigma Galaxy"},
-						ScheduledTime: time.Now().Unix(),
-						StreamUrl:     "https://twitch.tv/dota2",
+						ID:            randomID(),
+						TeamOne:       &types.Team{DisplayName: "Team Liquid"},
+						TeamTwo:       &types.Team{DisplayName: "Nigma Galaxy"},
+						ScheduledTime: now.Add(time.Minute * 1).UTC().Unix(),
+						StreamUrl:     "https://twitch.tv/dota2ti",
 					},
 					{
-						Radiant:       &types.Team{DisplayName: "Tundra Esports"},
-						Dire:          &types.Team{DisplayName: "Gaimin Gladiators"},
-						ScheduledTime: time.Now().Unix(),
-						StreamUrl:     "https://twitch.tv/dota2",
+						ID:            randomID(),
+						TeamOne:       &types.Team{DisplayName: "Tundra Esports"},
+						TeamTwo:       &types.Team{DisplayName: "Gaimin Gladiators"},
+						ScheduledTime: now.Add(time.Minute * 1).UTC().Unix(),
+						StreamUrl:     "https://twitch.tv/dota2ti",
 					},
 					{
-						Radiant:       &types.Team{DisplayName: "Team Spirit"},
-						Dire:          &types.Team{DisplayName: "PSG.LGD"},
-						ScheduledTime: time.Now().Add(time.Hour * 24).Unix(),
-						StreamUrl:     "https://twitch.tv/dota2",
+						ID:            randomID(),
+						TeamOne:       &types.Team{DisplayName: "Team Spirit"},
+						TeamTwo:       &types.Team{DisplayName: "PSG.LGD"},
+						ScheduledTime: now.Add(time.Minute * 2).UTC().Unix(),
+						StreamUrl:     "https://twitch.tv/dota2ti",
 					},
 					{
-						Radiant:       &types.Team{DisplayName: "Team Aster"},
-						Dire:          &types.Team{DisplayName: "Shopify Rebellion"},
-						ScheduledTime: time.Now().Add(time.Hour * 24).Unix(),
-						StreamUrl:     "https://twitch.tv/dota2",
+						ID:            randomID(),
+						TeamOne:       &types.Team{DisplayName: "Team Aster"},
+						TeamTwo:       &types.Team{DisplayName: "Shopify Rebellion"},
+						ScheduledTime: now.Add(time.Minute * 2).UTC().Unix(),
+						StreamUrl:     "https://twitch.tv/dota2ti",
 					},
 					{
-						Radiant:       &types.Team{DisplayName: "Evil Geniuses"},
-						Dire:          &types.Team{DisplayName: "OG"},
-						ScheduledTime: time.Now().Add(time.Hour * 24 * 2).Unix(),
-						StreamUrl:     "https://twitch.tv/dota2",
+						ID:            randomID(),
+						TeamOne:       &types.Team{DisplayName: "Evil Geniuses"},
+						TeamTwo:       &types.Team{DisplayName: "OG"},
+						ScheduledTime: now.Add(time.Minute * 3).UTC().Unix(),
+						StreamUrl:     "https://twitch.tv/dota2ti",
 					},
 					{
-						Radiant:       &types.Team{DisplayName: "Team Secret"},
-						Dire:          &types.Team{DisplayName: "OG"},
-						ScheduledTime: time.Now().Add(time.Hour * 24 * 2).Unix(),
-						StreamUrl:     "https://twitch.tv/dota2",
+						ID:            randomID(),
+						TeamOne:       &types.Team{DisplayName: "Team Secret"},
+						TeamTwo:       &types.Team{DisplayName: "OG"},
+						ScheduledTime: now.Add(time.Minute * 3).UTC().Unix(),
+						StreamUrl:     "https://twitch.tv/dota2ti",
 					},
 					{
-						Radiant:       &types.Team{DisplayName: "Team Liquid"},
-						Dire:          &types.Team{DisplayName: "Newbee"},
-						ScheduledTime: time.Now().Add(time.Hour * 24 * 3).Unix(),
-						StreamUrl:     "https://twitch.tv/dota2",
+						ID:            randomID(),
+						TeamOne:       &types.Team{DisplayName: "PSG.LGD"},
+						TeamTwo:       &types.Team{DisplayName: "OG"},
+						ScheduledTime: now.Add(time.Minute * 4).UTC().Unix(),
+						StreamUrl:     "https://twitch.tv/dota2ti",
 					},
-					{
-						Radiant:       &types.Team{DisplayName: "PSG.LGD"},
-						Dire:          &types.Team{DisplayName: "OG"},
-						ScheduledTime: time.Now().Add(time.Hour * 24 * 3).Unix(),
-						StreamUrl:     "https://twitch.tv/dota2",
-					},
+					matchProgressing,
+					oneTeamProgressedMatch,
+					firstMatchProgressing,
+					secondMatchProgressing,
+					noTeamsProgressedMatch,
 				},
 			},
 		}
@@ -93,4 +152,12 @@ func loadLeagues() ([]*types.League, error) {
 		json.Unmarshal(data, &leagues)
 	}
 	return leagues, nil
+}
+
+func deleteStoredLeagues() error {
+	return os.Remove(leagueStoredFilename)
+}
+
+func randomID() int16 {
+	return int16(rand.Intn(math.MaxInt16))
 }

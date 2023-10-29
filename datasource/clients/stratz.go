@@ -24,61 +24,100 @@ func (receiver StratzDataSourceClient) GetLeagues(query *queries.GetLeagues) ([]
 		return nil, err
 	}
 
+	// Make a cache of matches for quicker look up later
+	matchMap := make(map[int16]*types.Match)
+	for _, league := range leagues {
+		for _, nodeGroup := range league.NodeGroups {
+			for _, node := range nodeGroup.Nodes {
+				var teamOne *types.Team
+				if node.TeamOne != nil {
+					teamOne = types.NewTeam(*node.TeamOne.Name)
+				}
+				var teamTwo *types.Team
+				if node.TeamTwo != nil {
+					teamTwo = types.NewTeam(*node.TeamTwo.Name)
+				}
+				streamUrl := ""
+				if len(node.Streams) > 0 {
+					// Get English stream, if exists, if not :shrug:
+					for _, stream := range node.Streams {
+						if *stream.LanguageId == schema.LanguageEnglish {
+							streamUrl = *stream.StreamUrl
+							break
+						}
+					}
+				}
+				matchMap[*node.Id] = types.NewMatch(*node.Id, teamOne, teamTwo, *node.ScheduledTime, streamUrl)
+			}
+		}
+	}
+
 	var mappedLeagues []*types.League
 	for _, league := range leagues {
 		var matches []*types.Match
 		for _, nodeGroup := range league.NodeGroups {
 			for _, node := range nodeGroup.Nodes {
-				radiantTeam := types.NewTeam(node.TeamOne.Name)
-				direTeam := types.NewTeam(node.TeamTwo.Name)
-				streamUrl := ""
-				if len(node.Streams) > 0 {
-					// Get English stream, if exists, if not :shrug:
-					for _, stream := range node.Streams {
-						if stream.LanguageId == schema.LanguageEnglish {
-							streamUrl = stream.StreamUrl
-							break
-						}
+				match := matchMap[*node.Id]
+
+				// Now work out which matches are connected to each other, if any
+				if node.WinningNodeId != nil {
+					winningMatch := matchMap[*node.WinningNodeId]
+					if winningMatch.TeamOne == nil && winningMatch.TeamOneSourceMatch == nil {
+						winningMatch.TeamOneSourceMatch = match
+					} else if winningMatch.TeamTwo == nil && winningMatch.TeamTwoSourceMatch == nil {
+						winningMatch.TeamTwoSourceMatch = match
 					}
+					match.WinningTeamMatch = winningMatch
 				}
-				match := types.NewMatch(radiantTeam, direTeam, node.ScheduledTime, streamUrl)
+
+				if node.LosingNodeId != nil {
+					losingMatch := matchMap[*node.LosingNodeId]
+					if losingMatch.TeamOne == nil && losingMatch.TeamOneSourceMatch == nil {
+						losingMatch.TeamOneSourceMatch = match
+					} else if losingMatch.TeamTwo == nil && losingMatch.TeamTwoSourceMatch == nil {
+						losingMatch.TeamTwoSourceMatch = match
+					}
+					match.LosingTeamMatch = losingMatch
+				}
+
 				matches = append(matches, match)
 			}
 		}
-		mappedLeague := types.NewLeagueWithMatches(league.Id, league.DisplayName, matches)
+		mappedLeague := types.NewLeagueWithMatches(*league.Id, *league.DisplayName, matches)
 		mappedLeagues = append(mappedLeagues, mappedLeague)
 	}
 	return mappedLeagues, nil
 }
 
-func convertTiers(tiers []types.Tier) []schema.LeagueTier {
-	var leagueTiers []schema.LeagueTier
+func convertTiers(tiers []types.Tier) []*schema.LeagueTier {
+	var leagueTiers []*schema.LeagueTier
 	for _, t := range tiers {
 		leagueTiers = append(leagueTiers, convertTier(t))
 	}
 	return leagueTiers
 }
 
-func convertTier(tier types.Tier) schema.LeagueTier {
+func convertTier(tier types.Tier) *schema.LeagueTier {
+	convertedTier := schema.LeagueTierUnset
 	switch tier {
 	case types.TierAmateur:
-		return schema.LeagueTierAmateur
+		convertedTier = schema.LeagueTierAmateur
 	case types.TierProfessional:
-		return schema.LeagueTierProfessional
+		convertedTier = schema.LeagueTierProfessional
 	case types.TierMinor:
-		return schema.LeagueTierMinor
+		convertedTier = schema.LeagueTierMinor
 	case types.TierMajor:
-		return schema.LeagueTierMajor
+		convertedTier = schema.LeagueTierMajor
 	case types.TierInternational:
-		return schema.LeagueTierInternational
+		convertedTier = schema.LeagueTierInternational
 	case types.TierDpcQualifier:
-		return schema.LeagueTierDpcQualifier
+		convertedTier = schema.LeagueTierDpcQualifier
 	case types.TierDpcLeagueQualifier:
-		return schema.LeagueTierDpcLeagueQualifier
+		convertedTier = schema.LeagueTierDpcLeagueQualifier
 	case types.TierDpcLeague:
-		return schema.LeagueTierDpcLeague
+		convertedTier = schema.LeagueTierDpcLeague
 	case types.TierDpcLeagueFinals:
-		return schema.LeagueTierDpcLeagueFinals
+		convertedTier = schema.LeagueTierDpcLeagueFinals
 	}
-	return schema.LeagueTierUnset
+	return &convertedTier
 }

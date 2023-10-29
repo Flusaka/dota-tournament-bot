@@ -4,6 +4,7 @@ schema: stratz/schema.graphql
 operations:
 - stratz/genqlient.graphql
 generated: stratz/schema/schema.go
+optional: pointer
 bindings:
   Short:
     type: int16

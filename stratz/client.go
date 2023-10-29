@@ -38,25 +38,25 @@ func (c *Client) Initialise() {
 	c.gqlClient = graphql.NewClient("https://api.stratz.com/graphql", &httpClient)
 }
 
-func (c *Client) GetLeagues(tiers []schema.LeagueTier, finished bool) ([]schema.GetLeaguesLeaguesLeagueType, error) {
-	response, err := schema.GetLeagues(context.Background(), c.gqlClient, tiers, finished)
+func (c *Client) GetLeagues(tiers []*schema.LeagueTier, finished bool) ([]*schema.GetLeaguesLeaguesLeagueType, error) {
+	response, err := schema.GetLeagues(context.Background(), c.gqlClient, tiers, &finished)
 	if err != nil {
 		return nil, err
 	}
 	return response.Leagues, nil
 }
 
-func (c *Client) GetActiveLeagues(tiers []schema.LeagueTier) ([]schema.GetLeaguesLeaguesLeagueType, error) {
+func (c *Client) GetActiveLeagues(tiers []*schema.LeagueTier) ([]*schema.GetLeaguesLeaguesLeagueType, error) {
 	return c.GetLeagues(tiers, false)
 }
 
-func (c *Client) GetMatchesInActiveLeagues(tiers []schema.LeagueTier) ([]schema.GetLeaguesLeaguesLeagueTypeNodeGroupsLeagueNodeGroupTypeNodesLeagueNodeType, error) {
+func (c *Client) GetMatchesInActiveLeagues(tiers []*schema.LeagueTier) ([]*schema.GetLeaguesLeaguesLeagueTypeNodeGroupsLeagueNodeGroupTypeNodesLeagueNodeType, error) {
 	leagues, err := c.GetActiveLeagues(tiers)
 	if err != nil {
 		return nil, err
 	}
 
-	var matches []schema.GetLeaguesLeaguesLeagueTypeNodeGroupsLeagueNodeGroupTypeNodesLeagueNodeType
+	var matches []*schema.GetLeaguesLeaguesLeagueTypeNodeGroupsLeagueNodeGroupTypeNodesLeagueNodeType
 	for _, league := range leagues {
 		for _, nodeGroup := range league.NodeGroups {
 			matches = append(matches, nodeGroup.Nodes...)

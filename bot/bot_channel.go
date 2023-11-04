@@ -387,15 +387,12 @@ func (bc *DotaBotChannel) generateDailyMatchMessage(leagueMatches LeagueMatchesS
 		}
 		message += "Games on: " + streamUrl + "\n"
 		for _, streamMatch := range streamMatches {
-			convertedTime, err := bc.GetTimeInZone(streamMatch.ScheduledTime)
-			if err != nil {
-				continue
-			}
+			startTime := fmt.Sprintf("<t:%d:t>", streamMatch.ScheduledTime)
 
 			// If TeamOne is undetermined, use the TeamOneSourceMatch field to determine the teams to display
 			teamOneComponent := bc.generateTeamMessageComponent(streamMatch.TeamOne, streamMatch.TeamOneSourceMatch)
 			teamTwoComponent := bc.generateTeamMessageComponent(streamMatch.TeamTwo, streamMatch.TeamTwoSourceMatch)
-			message += convertedTime.Format(time.Kitchen) + " - " + teamOneComponent + " vs " + teamTwoComponent + "\n"
+			message += startTime + " - " + teamOneComponent + " vs " + teamTwoComponent + "\n"
 		}
 		message += "\n"
 	}

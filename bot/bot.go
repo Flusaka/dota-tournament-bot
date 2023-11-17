@@ -3,8 +3,8 @@ package bot
 import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/flusaka/dota-tournament-bot/datasource"
-	"github.com/flusaka/dota-tournament-bot/datasource/types"
 	"github.com/flusaka/dota-tournament-bot/models"
+	"github.com/flusaka/dota-tournament-bot/types"
 	"log"
 )
 

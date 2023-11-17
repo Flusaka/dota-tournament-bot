@@ -1,6 +1,8 @@
 package main
 
 import (
+	"github.com/flusaka/dota-tournament-bot/cache"
+	"github.com/flusaka/dota-tournament-bot/coordinators"
 	"github.com/flusaka/dota-tournament-bot/datasource/clients"
 	"github.com/flusaka/dota-tournament-bot/stratz"
 	"github.com/kamva/mgm/v3"
@@ -8,9 +10,15 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/flusaka/dota-tournament-bot/bot"
+)
+
+const (
+	defaultQueryCacheTimeInMinutes = 5
 )
 
 func main() {
@@ -18,6 +26,7 @@ func main() {
 	mongoUri := os.Getenv("MONGO_URI")
 	stratzToken := os.Getenv("STRATZ_TOKEN")
 	guildID := os.Getenv("GUILD_ID")
+	queryCacheTimeInMinutesEnv := os.Getenv("QUERY_CACHE_TIME_IN_MINUTES")
 
 	if discordToken == "" {
 		log.Println("No Discord token specified")
@@ -30,6 +39,14 @@ func main() {
 	if stratzToken == "" {
 		log.Println("No Stratz token specified")
 		return
+	}
+	queryCacheTimeInMinutes := defaultQueryCacheTimeInMinutes
+	if queryCacheTimeInMinutesEnv != "" {
+		var err error = nil
+		queryCacheTimeInMinutes, err = strconv.Atoi(queryCacheTimeInMinutesEnv)
+		if err != nil || queryCacheTimeInMinutes < 0 {
+			queryCacheTimeInMinutes = defaultQueryCacheTimeInMinutes
+		}
 	}
 
 	// Initialise Mongo
@@ -44,7 +61,10 @@ func main() {
 
 	dataSourceClient := clients.NewStratzDataSourceClient(stratzClient)
 
-	dotaBot := bot.NewDotaBotWithGuildID(dataSourceClient, guildID)
+	defaultQueryCache := cache.NewDefaultQueryResultCache(time.Minute * time.Duration(queryCacheTimeInMinutes))
+	queryCoordinator := coordinators.NewDefaultQueryCoordinator(dataSourceClient, defaultQueryCache)
+
+	dotaBot := bot.NewDotaBotWithGuildID(queryCoordinator, guildID)
 	err = dotaBot.Initialise(discordToken)
 	if err != nil {
 		log.Println("Error starting the Discord bot session")

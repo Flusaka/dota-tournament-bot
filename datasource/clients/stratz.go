@@ -1,10 +1,10 @@
 package clients
 
 import (
-	"github.com/flusaka/dota-tournament-bot/datasource/queries"
-	"github.com/flusaka/dota-tournament-bot/datasource/types"
+	"github.com/flusaka/dota-tournament-bot/queries"
 	"github.com/flusaka/dota-tournament-bot/stratz"
 	"github.com/flusaka/dota-tournament-bot/stratz/schema"
+	"github.com/flusaka/dota-tournament-bot/types"
 )
 
 type StratzDataSourceClient struct {
@@ -13,7 +13,7 @@ type StratzDataSourceClient struct {
 
 func NewStratzDataSourceClient(stratzClient *stratz.Client) StratzDataSourceClient {
 	return StratzDataSourceClient{
-		stratzClient,
+		stratzClient: stratzClient,
 	}
 }
 
@@ -92,6 +92,7 @@ func (receiver StratzDataSourceClient) GetLeagues(query *queries.GetLeagues) ([]
 		mappedLeague := types.NewLeagueWithMatches(*league.Id, *league.DisplayName, matches)
 		mappedLeagues = append(mappedLeagues, mappedLeague)
 	}
+
 	return mappedLeagues, nil
 }
 

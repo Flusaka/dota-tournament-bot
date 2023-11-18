@@ -1,7 +1,7 @@
 package bot
 
 import (
-	"github.com/flusaka/dota-tournament-bot/datasource/types"
+	"github.com/flusaka/dota-tournament-bot/types"
 	"golang.org/x/exp/slices"
 	"log"
 	"sync"

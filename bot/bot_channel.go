@@ -3,10 +3,10 @@ package bot
 import (
 	"fmt"
 	"github.com/bwmarrin/discordgo"
-	"github.com/flusaka/dota-tournament-bot/datasource"
-	"github.com/flusaka/dota-tournament-bot/datasource/queries"
-	"github.com/flusaka/dota-tournament-bot/datasource/types"
+	"github.com/flusaka/dota-tournament-bot/coordinators"
 	"github.com/flusaka/dota-tournament-bot/models"
+	"github.com/flusaka/dota-tournament-bot/queries"
+	"github.com/flusaka/dota-tournament-bot/types"
 	"golang.org/x/exp/slices"
 	"log"
 	"sort"
@@ -61,7 +61,7 @@ type LeagueMatchesSet struct {
 type DotaBotChannel struct {
 	session                    *discordgo.Session
 	config                     *models.ChannelConfig
-	dataSourceClient           datasource.Client
+	queryCoordinator           coordinators.QueryCoordinator
 	notificationTicker         *time.Ticker
 	cancelDailyNotifications   chan bool
 	cancelMatchEventsListening chan bool
@@ -70,13 +70,13 @@ type DotaBotChannel struct {
 	cachedMatches              map[int]map[int16]*types.Match
 }
 
-func NewDotaBotChannel(session *discordgo.Session, channelID string, dataSourceClient datasource.Client) *DotaBotChannel {
+func NewDotaBotChannel(session *discordgo.Session, channelID string, queryCoordinator coordinators.QueryCoordinator) *DotaBotChannel {
 	initialConfig := models.NewChannelConfig(channelID)
 	cancelMatchEventsListening := make(chan bool, 1)
 	dotaBotChannel := &DotaBotChannel{
 		session:                    session,
 		config:                     initialConfig,
-		dataSourceClient:           dataSourceClient,
+		queryCoordinator:           queryCoordinator,
 		matchEventNotifier:         NewMatchEventNotifier(cancelMatchEventsListening),
 		cancelMatchEventsListening: cancelMatchEventsListening,
 	}
@@ -84,12 +84,12 @@ func NewDotaBotChannel(session *discordgo.Session, channelID string, dataSourceC
 	return dotaBotChannel
 }
 
-func NewDotaBotChannelWithConfig(session *discordgo.Session, config *models.ChannelConfig, dataSourceClient datasource.Client) *DotaBotChannel {
+func NewDotaBotChannelWithConfig(session *discordgo.Session, config *models.ChannelConfig, queryCoordinator coordinators.QueryCoordinator) *DotaBotChannel {
 	cancelMatchEventsListening := make(chan bool, 1)
 	dotaBotChannel := &DotaBotChannel{
 		session:                    session,
 		config:                     config,
-		dataSourceClient:           dataSourceClient,
+		queryCoordinator:           queryCoordinator,
 		matchEventNotifier:         NewMatchEventNotifier(cancelMatchEventsListening),
 		cancelMatchEventsListening: cancelMatchEventsListening,
 	}
@@ -438,7 +438,7 @@ func (bc *DotaBotChannel) getMatchesToday(startingHour int, startingMinute int, 
 	}
 
 	query := queries.NewGetLeaguesQuery(bc.GetLeagues(), false)
-	leagues, err := bc.dataSourceClient.GetLeagues(query)
+	leagues, err := bc.queryCoordinator.GetLeagues(query)
 	if err != nil {
 		return ChannelResponseFailedToRetrieveLeagues, nil
 	}

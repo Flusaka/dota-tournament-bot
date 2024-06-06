@@ -19,7 +19,7 @@ type matchStartedNotification struct {
 }
 
 type MatchEventNotifier struct {
-	startedNotifications map[int16]*matchStartedNotification
+	startedNotifications map[int]*matchStartedNotification
 	MatchStarted         chan *MatchStartedNotification
 	mux                  sync.Mutex
 	cancel               <-chan bool
@@ -27,7 +27,7 @@ type MatchEventNotifier struct {
 
 func NewMatchEventNotifier(cancel <-chan bool) *MatchEventNotifier {
 	matchEventNotifier := &MatchEventNotifier{
-		startedNotifications: make(map[int16]*matchStartedNotification),
+		startedNotifications: make(map[int]*matchStartedNotification),
 		MatchStarted:         make(chan *MatchStartedNotification),
 		cancel:               cancel,
 	}

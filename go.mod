@@ -3,12 +3,10 @@ module github.com/flusaka/dota-tournament-bot
 go 1.19
 
 require (
-	github.com/Khan/genqlient v0.6.0
 	github.com/bwmarrin/discordgo v0.27.1
 	github.com/jellydator/ttlcache/v3 v3.1.0
-	github.com/kamva/mgm/v3 v3.4.1
 	github.com/mitchellh/hashstructure/v2 v2.0.2
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.9.0
 	go.mongodb.org/mongo-driver v1.10.3
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 )
@@ -18,6 +16,7 @@ require (
 	github.com/alexflint/go-arg v1.4.2 // indirect
 	github.com/alexflint/go-scalar v1.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/flusaka/pandascore-go v0.0.0-20240518165647-ce8b89d9ba74 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect

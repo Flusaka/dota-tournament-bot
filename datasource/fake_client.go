@@ -1,15 +1,14 @@
-package clients
+package datasource
 
 import (
 	"github.com/flusaka/dota-tournament-bot/queries"
 	"github.com/flusaka/dota-tournament-bot/types"
-	"math"
 	"math/rand"
 	"time"
 )
 
 type FakeDataSourceClient struct {
-	leagues []*types.League
+	leagues []*types.Tournament
 }
 
 const (
@@ -23,11 +22,11 @@ func NewFakeDataSourceClient() FakeDataSourceClient {
 	}
 }
 
-func (receiver FakeDataSourceClient) GetLeagues(query *queries.GetLeagues) ([]*types.League, error) {
+func (receiver FakeDataSourceClient) GetLeagues(query *queries.GetTournaments) ([]*types.Tournament, error) {
 	return receiver.leagues, nil
 }
 
-func loadLeagues() []*types.League {
+func loadLeagues() []*types.Tournament {
 	now := time.Now().Round(time.Minute)
 
 	oneTeamProgressedMatch := &types.Match{
@@ -77,7 +76,7 @@ func loadLeagues() []*types.League {
 	noTeamsProgressedMatch.TeamTwoSourceMatch = secondMatchProgressing
 
 	// If there is no file, generate data and store to it
-	leagues := []*types.League{
+	leagues := []*types.Tournament{
 		{
 			ID:          0,
 			DisplayName: "The International 2023",
@@ -142,6 +141,6 @@ func loadLeagues() []*types.League {
 	return leagues
 }
 
-func randomID() int16 {
-	return int16(rand.Intn(math.MaxInt16))
+func randomID() int {
+	return rand.Int()
 }

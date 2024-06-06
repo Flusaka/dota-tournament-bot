@@ -2,19 +2,17 @@ package models
 
 import (
 	"github.com/flusaka/dota-tournament-bot/types"
-	"github.com/kamva/mgm/v3"
-	"go.mongodb.org/mongo-driver/bson"
-	"log"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type ChannelConfig struct {
-	mgm.DefaultModel          `bson:",inline"`
-	ChannelID                 string       `bson:"channelID"`
-	Timezone                  string       `bson:"tz"`
-	DailyMessageHour          int          `bson:"dailyMessageHour"`
-	DailyMessageMinute        int          `bson:"dailyMessageMinute"`
-	DailyNotificationsEnabled bool         `bson:"dailyNotificationsEnabled"`
-	Leagues                   []types.Tier `bson:"leagues, omitempty"`
+	ID                        primitive.ObjectID `bson:"_id,omitempty"`
+	ChannelID                 string             `bson:"channelID"`
+	Timezone                  string             `bson:"tz"`
+	DailyMessageHour          int                `bson:"dailyMessageHour"`
+	DailyMessageMinute        int                `bson:"dailyMessageMinute"`
+	DailyNotificationsEnabled bool               `bson:"dailyNotificationsEnabled"`
+	Tiers                     []types.Tier       `bson:"tiers, omitempty"`
 }
 
 func NewChannelConfig(channelID string) *ChannelConfig {
@@ -24,8 +22,8 @@ func NewChannelConfig(channelID string) *ChannelConfig {
 		// Default to GMT
 		Timezone: "GMT",
 
-		// Default to DPC League, Majors and The International
-		Leagues: []types.Tier{types.TierDpcLeague, types.TierMajor, types.TierInternational},
+		// Default to S and A tiers
+		Tiers: []types.Tier{types.TierS, types.TierA},
 
 		DailyMessageHour:          0,
 		DailyMessageMinute:        0,
@@ -33,32 +31,30 @@ func NewChannelConfig(channelID string) *ChannelConfig {
 	}
 }
 
-func FetchAllConfigs() ([]*ChannelConfig, error) {
-	configs := make([]*ChannelConfig, 0)
-	err := mgm.Coll(&ChannelConfig{}).SimpleFind(&configs, bson.D{})
-	if err != nil {
-		return nil, err
-	}
-	return configs, nil
+func (c *ChannelConfig) GetID() string {
+	return c.ID.String()
 }
 
-func (cc *ChannelConfig) Create() {
-	err := mgm.Coll(cc).Create(cc)
-	if err != nil {
-		log.Println("Error when saving channel config", err)
-	}
+func (c *ChannelConfig) GetChannelID() string {
+	return c.ChannelID
 }
 
-func (cc *ChannelConfig) Update() {
-	err := mgm.Coll(cc).Update(cc)
-	if err != nil {
-		log.Println("Error when saving channel config", err)
-	}
+func (c *ChannelConfig) GetTimezone() string {
+	return c.Timezone
 }
 
-func (cc *ChannelConfig) Delete() {
-	err := mgm.Coll(cc).Delete(cc)
-	if err != nil {
-		log.Println("Error when deleting channel config", err)
-	}
+func (c *ChannelConfig) GetDailyMessageHour() int {
+	return c.DailyMessageHour
+}
+
+func (c *ChannelConfig) GetDailyMessageMinute() int {
+	return c.DailyMessageMinute
+}
+
+func (c *ChannelConfig) GetDailyNotificationsEnabled() bool {
+	return c.DailyNotificationsEnabled
+}
+
+func (c *ChannelConfig) GetTiers() []types.Tier {
+	return c.Tiers
 }

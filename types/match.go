@@ -1,7 +1,7 @@
 package types
 
 type Match struct {
-	ID            int16  `json:"id"`
+	ID            int    `json:"id"`
 	TeamOne       *Team  `json:"teamOne"`
 	TeamTwo       *Team  `json:"teamTwo"`
 	ScheduledTime int64  `json:"scheduledTime"`
@@ -16,7 +16,7 @@ type Match struct {
 	LosingTeamMatch *Match `json:"losingTeamMatch"`
 }
 
-func NewMatch(id int16, teamOne *Team, teamTwo *Team, scheduledTime int64, streamUrl string) *Match {
+func NewMatch(id int, teamOne *Team, teamTwo *Team, scheduledTime int64, streamUrl string) *Match {
 	return &Match{
 		ID:            id,
 		TeamOne:       teamOne,

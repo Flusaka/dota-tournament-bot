@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"github.com/flusaka/dota-tournament-bot/cache"
 	"github.com/flusaka/dota-tournament-bot/coordinators"
-	"github.com/flusaka/dota-tournament-bot/datasource/clients"
-	"github.com/flusaka/dota-tournament-bot/stratz"
-	"github.com/kamva/mgm/v3"
+	"github.com/flusaka/dota-tournament-bot/datasource"
+	"github.com/flusaka/dota-tournament-bot/repositories"
+	"github.com/flusaka/pandascore-go"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
 	"os"
@@ -50,21 +52,23 @@ func main() {
 	}
 
 	// Initialise Mongo
-	err := mgm.SetDefaultConfig(nil, "bot", options.Client().ApplyURI(mongoUri))
+	serverApi := options.ServerAPI(options.ServerAPIVersion1)
+	opts := options.Client().ApplyURI(mongoUri).SetServerAPIOptions(serverApi)
+	client, err := mongo.Connect(context.Background(), opts)
 	if err != nil {
 		log.Println("Error connecting to MongoDB")
 		return
 	}
 
-	stratzClient := stratz.NewClient(stratzToken)
-	stratzClient.Initialise()
-
-	dataSourceClient := clients.NewStratzDataSourceClient(stratzClient)
+	pandascoreClient := pandascore.NewClient("8FG9WnjcQBp9FkS8PA6bTQAEKYQefsBhWBjOG_hC7VYu4vWLxNM")
+	dataSourceClient := datasource.NewPandascoreDataSource(pandascoreClient)
 
 	defaultQueryCache := cache.NewDefaultQueryResultCache(time.Minute * time.Duration(queryCacheTimeInMinutes))
 	queryCoordinator := coordinators.NewDefaultQueryCoordinator(dataSourceClient, defaultQueryCache)
 
-	dotaBot := bot.NewDotaBotWithGuildID(queryCoordinator, guildID)
+	mongoChannelConfigRepository := repositories.NewMongoChannelConfigRepository(client.Database("bot"))
+
+	dotaBot := bot.NewDotaBotWithGuildID(queryCoordinator, mongoChannelConfigRepository, guildID)
 	err = dotaBot.Initialise(discordToken)
 	if err != nil {
 		log.Println("Error starting the Discord bot session")

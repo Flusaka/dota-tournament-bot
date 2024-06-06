@@ -1,9 +1,8 @@
 package bot
 
 import (
+	"context"
 	"github.com/bwmarrin/discordgo"
-	"github.com/flusaka/dota-tournament-bot/datasource"
-	"github.com/flusaka/dota-tournament-bot/models"
 	"github.com/flusaka/dota-tournament-bot/types"
 	"log"
 )
@@ -63,28 +62,24 @@ var (
 							Required:    true,
 							Choices: []*discordgo.ApplicationCommandOptionChoice{
 								{
-									Name:  "DPC League",
-									Value: types.TierDpcLeague,
+									Name:  "S Tier",
+									Value: types.TierS,
 								},
 								{
-									Name:  "The International Qualifiers",
-									Value: types.TierDpcLeagueQualifier,
+									Name:  "A Tier",
+									Value: types.TierA,
 								},
 								{
-									Name:  "The International",
-									Value: types.TierInternational,
+									Name:  "B Tier",
+									Value: types.TierB,
 								},
 								{
-									Name:  "Majors",
-									Value: types.TierMajor,
+									Name:  "C Tier",
+									Value: types.TierC,
 								},
 								{
-									Name:  "Minors",
-									Value: types.TierMinor,
-								},
-								{
-									Name:  "Other Pro Tournaments",
-									Value: types.TierProfessional,
+									Name:  "D Tier",
+									Value: types.TierD,
 								},
 							},
 						},
@@ -102,28 +97,24 @@ var (
 							Required:    true,
 							Choices: []*discordgo.ApplicationCommandOptionChoice{
 								{
-									Name:  "DPC League",
-									Value: types.TierDpcLeague,
+									Name:  "S Tier",
+									Value: types.TierS,
 								},
 								{
-									Name:  "The International Qualifiers",
-									Value: types.TierDpcLeagueQualifier,
+									Name:  "A Tier",
+									Value: types.TierA,
 								},
 								{
-									Name:  "The International",
-									Value: types.TierInternational,
+									Name:  "B Tier",
+									Value: types.TierB,
 								},
 								{
-									Name:  "Majors",
-									Value: types.TierMajor,
+									Name:  "C Tier",
+									Value: types.TierC,
 								},
 								{
-									Name:  "Minors",
-									Value: types.TierMinor,
-								},
-								{
-									Name:  "Other Pro Tournaments",
-									Value: types.TierProfessional,
+									Name:  "D Tier",
+									Value: types.TierD,
 								},
 							},
 						},
@@ -178,8 +169,10 @@ var (
 				})
 			} else {
 				log.Println("Starting bot on channel", i.ChannelID)
-				channel := NewDotaBotChannel(s, i.ChannelID, b.dataSourceClient)
-				channel.Start()
+				// Create a new config for this channel
+				config, _ := b.channelConfigRepository.Create(context.TODO(), i.ChannelID)
+
+				channel := NewDotaBotChannelWithConfig(s, config, b.dataSource)
 				b.channels[i.ChannelID] = channel
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -287,16 +280,16 @@ var (
 				switch innerCommand.Name {
 				case leagueAddCommandKey:
 					{
-						addedSuccessfully := channel.AddLeague(types.Tier(leagueValue))
+						addedSuccessfully := channel.AddTier(types.Tier(leagueValue))
 						if addedSuccessfully {
 							s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 								Type: discordgo.InteractionResponseChannelMessageWithSource,
-								Data: &discordgo.InteractionResponseData{Content: "League added successfully!"},
+								Data: &discordgo.InteractionResponseData{Content: "Tournament added successfully!"},
 							})
 						} else {
 							s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 								Type: discordgo.InteractionResponseChannelMessageWithSource,
-								Data: &discordgo.InteractionResponseData{Content: "League has already been added"},
+								Data: &discordgo.InteractionResponseData{Content: "Tournament has already been added"},
 							})
 						}
 						break
@@ -306,7 +299,7 @@ var (
 						channel.RemoveLeague(types.Tier(leagueValue))
 						s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 							Type: discordgo.InteractionResponseChannelMessageWithSource,
-							Data: &discordgo.InteractionResponseData{Content: "League removed successfully!"},
+							Data: &discordgo.InteractionResponseData{Content: "Tournament removed successfully!"},
 						})
 						break
 					}
@@ -323,7 +316,11 @@ var (
 		disconnectCommandKey: func(b *DotaBot, s *discordgo.Session, i *discordgo.InteractionCreate) {
 			if channel, ok := b.channels[i.ChannelID]; ok {
 				log.Println("Stopping bot on channel", i.ChannelID)
-				channel.Stop()
+				channel.Close()
+
+				// Delete the channel config
+				b.channelConfigRepository.Delete(context.TODO(), channel.config)
+
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
 					Data: &discordgo.InteractionResponseData{
@@ -337,22 +334,25 @@ var (
 )
 
 type DotaBot struct {
-	guildID            string
-	dataSourceClient   datasource.Client
-	discordSession     *discordgo.Session
-	channels           map[string]*DotaBotChannel
-	registeredCommands []*discordgo.ApplicationCommand
+	guildID                 string
+	channelConfigRepository ChannelConfigRepository
+	dataSource              DataSource
+	session                 *discordgo.Session
+	channels                map[string]*DotaBotChannel
+	registeredCommands      []*discordgo.ApplicationCommand
 }
 
-func NewDotaBot(dataSourceClient datasource.Client) *DotaBot {
-	return NewDotaBotWithGuildID(dataSourceClient, "")
+func NewDotaBot(dataSourceClient DataSource, channelConfigRepository ChannelConfigRepository) *DotaBot {
+	return NewDotaBotWithGuildID(dataSourceClient, channelConfigRepository, "")
 }
 
-func NewDotaBotWithGuildID(dataSourceClient datasource.Client, guildID string) *DotaBot {
-	b := new(DotaBot)
-	b.guildID = guildID
-	b.dataSourceClient = dataSourceClient
-	b.channels = make(map[string]*DotaBotChannel)
+func NewDotaBotWithGuildID(dataSource DataSource, channelConfigRepository ChannelConfigRepository, guildID string) *DotaBot {
+	b := &DotaBot{
+		guildID:                 guildID,
+		channelConfigRepository: channelConfigRepository,
+		dataSource:              dataSource,
+		channels:                make(map[string]*DotaBotChannel),
+	}
 	return b
 }
 
@@ -391,25 +391,25 @@ func (b *DotaBot) Initialise(token string) error {
 	err = dg.Open()
 
 	if err == nil {
-		b.discordSession = dg
+		b.session = dg
 
-		configs, err := models.FetchAllConfigs()
+		configs, err := b.channelConfigRepository.GetAll(context.TODO())
 		if err != nil {
 			log.Println("Could not retrieve configs", err)
 		}
 
 		// Setup existing bot channels
 		for _, config := range configs {
-			log.Println("Restarting channel on ID", config.ChannelID)
-			b.channels[config.ChannelID] = NewDotaBotChannelWithConfig(b.discordSession, config, b.dataSourceClient)
+			log.Println("Restarting channel on ID", config.GetChannelID())
+			b.channels[config.GetChannelID()] = NewDotaBotChannelWithConfig(b.session, config, b.dataSource)
 
 			// Call update on the config in case there's new values added that should go into the database
-			config.Update()
+			b.channelConfigRepository.Update(context.TODO(), config)
 		}
 
 		b.registeredCommands = make([]*discordgo.ApplicationCommand, len(commands))
 		for i, command := range commands {
-			cmd, err := b.discordSession.ApplicationCommandCreate(b.discordSession.State.User.ID, b.guildID, command)
+			cmd, err := b.session.ApplicationCommandCreate(b.session.State.User.ID, b.guildID, command)
 			if err != nil {
 				log.Println("Error creating command", err)
 			} else {
@@ -426,7 +426,7 @@ func (b *DotaBot) Initialise(token string) error {
 func (b *DotaBot) Shutdown() {
 	// Remove all registered commands
 	for _, command := range b.registeredCommands {
-		err := b.discordSession.ApplicationCommandDelete(b.discordSession.State.User.ID, b.guildID, command.ID)
+		err := b.session.ApplicationCommandDelete(b.session.State.User.ID, b.guildID, command.ID)
 		if err != nil {
 			log.Printf("Command %v failed to be removed", command.Name)
 		} else {
@@ -434,7 +434,7 @@ func (b *DotaBot) Shutdown() {
 		}
 	}
 
-	err := b.discordSession.Close()
+	err := b.session.Close()
 	if err != nil {
 		log.Println("Error when closing Discord session", err)
 	}

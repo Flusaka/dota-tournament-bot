@@ -439,16 +439,8 @@ func (b *DotaBot) Initialise(token string) error {
 			b.channelConfigRepository.Update(context.TODO(), config)
 		}
 
-		b.registeredCommands = make([]*discordgo.ApplicationCommand, len(commands))
-		for i, command := range commands {
-			cmd, err := b.session.ApplicationCommandCreate(b.session.State.User.ID, b.guildID, command)
-			if err != nil {
-				log.Println("Error creating command", err)
-			} else {
-				log.Printf("Command %v registered", command.Name)
-			}
-			b.registeredCommands[i] = cmd
-		}
+		// Sync commands
+		b.syncCommands()
 	} else {
 		log.Println("Error when opening session", err)
 	}
@@ -470,4 +462,53 @@ func (b *DotaBot) Shutdown() {
 	if err != nil {
 		log.Println("Error when closing Discord session", err)
 	}
+}
+
+func (b *DotaBot) syncCommands() error {
+	existingCommands, err := b.session.ApplicationCommands(b.session.State.User.ID, b.guildID)
+	if err != nil {
+		return err
+	}
+
+	desiredCommands := make(map[string]*discordgo.ApplicationCommand, len(commands))
+	for _, cmd := range commands {
+		desiredCommands[cmd.Name] = cmd
+	}
+
+	existingMap := make(map[string]*discordgo.ApplicationCommand, len(existingCommands))
+	for _, cmd := range existingCommands {
+		existingMap[cmd.Name] = cmd
+	}
+
+	// Go through existing commands and check if any need to be deleted
+	for _, cmd := range existingCommands {
+		if _, found := desiredCommands[cmd.Name]; !found {
+			// Delete the command if the existing one is no longer in the desiredCommands
+			err := b.session.ApplicationCommandDelete(b.session.State.User.ID, b.guildID, cmd.ID)
+			if err != nil {
+				log.Printf("Failed to delete command %s (%v)", cmd.Name, err)
+			}
+		}
+	}
+
+	// Go through the list of desiredCommands and if it already exists, just update, otherwise create
+	for _, cmd := range desiredCommands {
+		if existingCmd, found := existingMap[cmd.Name]; found {
+			_, err := b.session.ApplicationCommandEdit(b.session.State.User.ID, b.guildID, existingCmd.ID, cmd)
+			if err != nil {
+				log.Printf("Failed to edit command %s (%s) in guild %s: %v", cmd.Name, cmd.ID, b.guildID, err)
+			} else {
+				log.Printf("Successfully edited command %s (%s) in guild %s", cmd.Name, cmd.ID, b.guildID)
+			}
+		} else {
+			// Create new command
+			_, err := b.session.ApplicationCommandCreate(b.session.State.User.ID, b.guildID, cmd)
+			if err != nil {
+				log.Printf("Failed to create command %s in guild %s: %v", cmd.Name, b.guildID, err)
+			} else {
+				log.Printf("Successfully created command %s in guild %s", cmd.Name, b.guildID)
+			}
+		}
+	}
+	return nil
 }

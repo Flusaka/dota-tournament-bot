@@ -6,8 +6,8 @@ import (
 	"github.com/flusaka/dota-tournament-bot/bot"
 	"github.com/flusaka/dota-tournament-bot/models"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type MongoChannelConfigRepository struct {
@@ -21,7 +21,25 @@ func NewMongoChannelConfigRepository(database *mongo.Database) *MongoChannelConf
 }
 
 func (r *MongoChannelConfigRepository) GetAll(ctx context.Context) ([]bot.ChannelConfig, error) {
-	return nil, nil
+	filter := bson.D{{}}
+	opts := options.Find().SetSort(bson.D{{
+		"createdAt", -1,
+	}})
+	cursor, err := r.Collection.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var configs []bot.ChannelConfig
+	for cursor.Next(ctx) {
+		var result models.ChannelConfig
+		if decodeErr := cursor.Decode(&result); decodeErr != nil {
+			continue
+		}
+		configs = append(configs, &result)
+	}
+	return configs, nil
 }
 
 func (r *MongoChannelConfigRepository) Create(ctx context.Context, channelID string) (bot.ChannelConfig, error) {
@@ -36,13 +54,11 @@ func (r *MongoChannelConfigRepository) Create(ctx context.Context, channelID str
 }
 
 func (r *MongoChannelConfigRepository) Update(ctx context.Context, config bot.ChannelConfig) error {
-	hexId := config.GetChannelID()
-	id, err := primitive.ObjectIDFromHex(hexId)
-	if err != nil {
-		return err
-	}
+	channelId := config.GetChannelID()
 
-	_, err = r.Collection.UpdateByID(ctx, id, config)
+	_, err := r.Collection.UpdateOne(ctx, bson.D{{
+		"channelID", channelId,
+	}}, config)
 	if err != nil {
 		return err
 	}
@@ -51,14 +67,10 @@ func (r *MongoChannelConfigRepository) Update(ctx context.Context, config bot.Ch
 }
 
 func (r *MongoChannelConfigRepository) Delete(ctx context.Context, config bot.ChannelConfig) error {
-	hexId := config.GetChannelID()
-	id, err := primitive.ObjectIDFromHex(hexId)
-	if err != nil {
-		return err
-	}
+	channelID := config.GetChannelID()
 
-	_, err = r.Collection.DeleteOne(ctx, bson.D{{
-		"_id", id,
+	_, err := r.Collection.DeleteOne(ctx, bson.D{{
+		"channelID", channelID,
 	}})
 	if err != nil {
 		return err

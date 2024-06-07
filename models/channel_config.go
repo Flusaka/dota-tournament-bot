@@ -3,6 +3,7 @@ package models
 import (
 	"github.com/flusaka/dota-tournament-bot/types"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"time"
 )
 
 type ChannelConfig struct {
@@ -13,6 +14,8 @@ type ChannelConfig struct {
 	DailyMessageMinute        int                `bson:"dailyMessageMinute"`
 	DailyNotificationsEnabled bool               `bson:"dailyNotificationsEnabled"`
 	Tiers                     []types.Tier       `bson:"tiers, omitempty"`
+	CreatedAt                 time.Time          `bson:"createdAt"`
+	UpdatedAt                 time.Time          `json:"updatedAt"`
 }
 
 func NewChannelConfig(channelID string) *ChannelConfig {
@@ -28,6 +31,9 @@ func NewChannelConfig(channelID string) *ChannelConfig {
 		DailyMessageHour:          0,
 		DailyMessageMinute:        0,
 		DailyNotificationsEnabled: false,
+
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
 	}
 }
 
@@ -43,6 +49,10 @@ func (c *ChannelConfig) GetTimezone() string {
 	return c.Timezone
 }
 
+func (c *ChannelConfig) SetTimezone(timezone string) {
+	c.Timezone = timezone
+}
+
 func (c *ChannelConfig) GetDailyMessageHour() int {
 	return c.DailyMessageHour
 }
@@ -51,10 +61,41 @@ func (c *ChannelConfig) GetDailyMessageMinute() int {
 	return c.DailyMessageMinute
 }
 
+func (c *ChannelConfig) SetDailyMessageTime(hour int, minute int) {
+	c.DailyMessageHour = hour
+	c.DailyMessageMinute = minute
+}
+
 func (c *ChannelConfig) GetDailyNotificationsEnabled() bool {
 	return c.DailyNotificationsEnabled
 }
 
+func (c *ChannelConfig) SetDailyNotificationsEnabled(enabled bool) {
+	c.DailyNotificationsEnabled = enabled
+}
+
 func (c *ChannelConfig) GetTiers() []types.Tier {
 	return c.Tiers
+}
+
+func (c *ChannelConfig) AddTier(tier types.Tier) bool {
+	// Check it doesn't already exist, and if it does, return false
+	for _, existingTier := range c.Tiers {
+		if existingTier == tier {
+			return false
+		}
+	}
+	// Otherwise append it and return true
+	c.Tiers = append(c.Tiers, tier)
+	return true
+}
+
+func (c *ChannelConfig) RemoveTier(tier types.Tier) {
+	var tiers []types.Tier
+	for _, existingTier := range c.Tiers {
+		if existingTier != tier {
+			tiers = append(tiers, existingTier)
+		}
+	}
+	c.Tiers = tiers
 }

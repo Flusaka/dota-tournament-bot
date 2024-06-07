@@ -26,7 +26,7 @@ const (
 func main() {
 	discordToken := os.Getenv("DISCORD_TOKEN")
 	mongoUri := os.Getenv("MONGO_URI")
-	stratzToken := os.Getenv("STRATZ_TOKEN")
+	pandascoreToken := os.Getenv("PANDASCORE_TOKEN")
 	guildID := os.Getenv("GUILD_ID")
 	queryCacheTimeInMinutesEnv := os.Getenv("QUERY_CACHE_TIME_IN_MINUTES")
 
@@ -38,8 +38,8 @@ func main() {
 		log.Println("No Mongo URI specified")
 		return
 	}
-	if stratzToken == "" {
-		log.Println("No Stratz token specified")
+	if pandascoreToken == "" {
+		log.Println("No Pandascore token specified")
 		return
 	}
 	queryCacheTimeInMinutes := defaultQueryCacheTimeInMinutes
@@ -60,7 +60,7 @@ func main() {
 		return
 	}
 
-	pandascoreClient := pandascore.NewClient("8FG9WnjcQBp9FkS8PA6bTQAEKYQefsBhWBjOG_hC7VYu4vWLxNM")
+	pandascoreClient := pandascore.NewClient(pandascoreToken)
 	dataSourceClient := datasource.NewPandascoreDataSource(pandascoreClient)
 
 	defaultQueryCache := cache.NewDefaultQueryResultCache(time.Minute * time.Duration(queryCacheTimeInMinutes))

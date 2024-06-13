@@ -5,6 +5,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/flusaka/pandascore-go v0.0.0-20240518165647-ce8b89d9ba74 h1:DIo5S1ph4Kmc4GQQiZuB4XXK3Jt4IgpKF3SshYaE4r0=
 github.com/flusaka/pandascore-go v0.0.0-20240518165647-ce8b89d9ba74/go.mod h1:pNIDefnEMrQQbqJKf0xIoNmjJF3kphRXPjgx6ZpOKkc=
+github.com/flusaka/pandascore-go v0.0.0-20240610085145-6140645b170e h1:bMukAMG6LZiAnLWkPr1+HjXP3fVmMsKE9qbFKWBVrak=
+github.com/flusaka/pandascore-go v0.0.0-20240610085145-6140645b170e/go.mod h1:pNIDefnEMrQQbqJKf0xIoNmjJF3kphRXPjgx6ZpOKkc=
 github.com/golang/snappy v0.0.1 h1:Qgr9rKW7uDUkrbSmQeiDsGa8SjGyCOGtuasMWwvp2P4=
 github.com/golang/snappy v0.0.1/go.mod h1:/XxbfmMg8lxefKM7IXC3fBNl/7bRcc72aCRzEWrmP2Q=
 github.com/google/go-cmp v0.5.2/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=

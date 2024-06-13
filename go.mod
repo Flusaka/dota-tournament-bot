@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/bwmarrin/discordgo v0.27.1
-	github.com/flusaka/pandascore-go v0.0.0-20240518165647-ce8b89d9ba74
+	github.com/flusaka/pandascore-go v0.0.0-20240610085145-6140645b170e
 	github.com/jellydator/ttlcache/v3 v3.1.0
 	github.com/mitchellh/hashstructure/v2 v2.0.2
 	github.com/stretchr/testify v1.9.0

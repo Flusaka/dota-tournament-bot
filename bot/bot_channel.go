@@ -15,7 +15,7 @@ type ChannelResponse uint8
 const (
 	// Result constants from any bot method calls
 	ChannelResponseSuccess                 ChannelResponse = 0
-	ChannelResponseNoLeagues               ChannelResponse = 1
+	ChannelResponseNoTiers                 ChannelResponse = 1
 	ChannelResponseFailedToRetrieveLeagues ChannelResponse = 2
 	ChannelResponseNoMatches               ChannelResponse = 3
 	ChannelResponseFailedToSendToDiscord   ChannelResponse = 4
@@ -39,7 +39,7 @@ var (
 type StreamMatchMap map[string][]*types.Match
 
 type TournamentMatchesSet struct {
-	Tournament *types.Tournament
+	Tournament *types.BaseTournament
 	Matches    StreamMatchMap
 }
 
@@ -80,7 +80,7 @@ func (bc *DotaBotChannel) Close() {
 
 func (bc *DotaBotChannel) EnableDailyNotifications(enabled bool) ChannelResponse {
 	//if len(bc.config.Tiers) == 0 {
-	//	return ChannelResponseNoLeagues
+	//	return ChannelResponseNoTiers
 	//}
 	//
 	//if enabled != bc.config.DailyNotificationsEnabled {
@@ -152,86 +152,86 @@ func (bc *DotaBotChannel) calculateTimeUntilNextNotification() (time.Duration, e
 
 func (bc *DotaBotChannel) SendMatchesOfTheDayInResponseTo(interaction *discordgo.InteractionCreate) {
 
-	//startingHour := 0
-	//startingMinute := 0
-	//
-	//if bc.config.GetDailyNotificationsEnabled() {
-	//	startingHour = bc.config.GetDailyMessageHour()
-	//	startingMinute = bc.config.GetDailyMessageMinute()
-	//}
-	//result, leagueMatchesSet := bc.getMatchesToday(startingHour, startingMinute, false)
-	//
-	//switch result {
-	//case ChannelResponseSuccess:
-	//	{
-	//		interactionRespondedTo := false
-	//		for _, leagueMatches := range leagueMatchesSet {
-	//			// Build up the message
-	//			message := ":robot: " + leagueMatches.League.DisplayName + " games today!\n\n"
-	//			matchesMessage := bc.generateDailyMatchMessage(leagueMatches)
-	//
-	//			if len(matchesMessage) > 0 {
-	//				fullMessage := message + matchesMessage
-	//				// If we haven't responded to the interaction yet, do that first
-	//				if !interactionRespondedTo {
-	//					err := bc.session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
-	//						Type: discordgo.InteractionResponseChannelMessageWithSource,
-	//						Data: &discordgo.InteractionResponseData{
-	//							Content: fullMessage,
-	//							Flags:   discordgo.MessageFlagsSuppressEmbeds,
-	//						},
-	//					})
-	//					// If there was no error responding to the interaction, it's been responded to
-	//					interactionRespondedTo = err == nil
-	//					if err != nil {
-	//						log.Printf("Error responding to /today %v", err)
-	//					}
-	//				} else {
-	//					// Otherwise, just send a regular message
-	//					// Send the message and get the Discord message struct back
-	//					discordMsg, err := bc.session.ChannelMessageSend(bc.config.ChannelID, fullMessage)
-	//					if err != nil {
-	//						log.Println("Error sending message to", bc.getChannelIdentifier(), err.Error())
-	//					} else {
-	//						// Suppress the embeds on the message from the stream links
-	//						editMessage := discordgo.NewMessageEdit(bc.config.ChannelID, discordMsg.ID)
-	//						editMessage.Flags |= discordgo.MessageFlagsSuppressEmbeds
-	//						bc.session.ChannelMessageEditComplex(editMessage)
-	//					}
-	//				}
-	//			}
-	//		}
-	//		break
-	//	}
-	//
-	//case ChannelResponseNoMatches:
-	//	{
-	//		bc.session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
-	//			Type: discordgo.InteractionResponseChannelMessageWithSource,
-	//			Data: &discordgo.InteractionResponseData{
-	//				Content: ":robot: No matches today!",
-	//				Flags:   discordgo.MessageFlagsSuppressEmbeds,
-	//			},
-	//		})
-	//		break
-	//	}
-	//case ChannelResponseFailedToRetrieveLeagues:
-	//	{
-	//		log.Printf("Failed to retrieve leagues from DataSource, channel %v", bc.getChannelIdentifier())
-	//		break
-	//	}
-	//case ChannelResponseNoLeagues:
-	//	{
-	//		bc.session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
-	//			Type: discordgo.InteractionResponseChannelMessageWithSource,
-	//			Data: &discordgo.InteractionResponseData{
-	//				Content: "No leagues have been set up on this channel yet!",
-	//				Flags:   discordgo.MessageFlagsSuppressEmbeds,
-	//			},
-	//		})
-	//		break
-	//	}
-	//}
+	startingHour := 0
+	startingMinute := 0
+
+	if bc.config.GetDailyNotificationsEnabled() {
+		startingHour = bc.config.GetDailyMessageHour()
+		startingMinute = bc.config.GetDailyMessageMinute()
+	}
+	result, tournamentMatchesSet := bc.getMatchesToday(startingHour, startingMinute, false)
+
+	switch result {
+	case ChannelResponseSuccess:
+		{
+			interactionRespondedTo := false
+			for _, tournamentMatches := range tournamentMatchesSet {
+				// Build up the message
+				message := ":robot: " + tournamentMatches.Tournament.DisplayName + " games today!\n\n"
+				matchesMessage := bc.generateDailyMatchMessage(tournamentMatches)
+
+				if len(matchesMessage) > 0 {
+					fullMessage := message + matchesMessage
+					// If we haven't responded to the interaction yet, do that first
+					if !interactionRespondedTo {
+						err := bc.session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
+							Type: discordgo.InteractionResponseChannelMessageWithSource,
+							Data: &discordgo.InteractionResponseData{
+								Content: fullMessage,
+								Flags:   discordgo.MessageFlagsSuppressEmbeds,
+							},
+						})
+						// If there was no error responding to the interaction, it's been responded to
+						interactionRespondedTo = err == nil
+						if err != nil {
+							log.Printf("Error responding to /today %v", err)
+						}
+					} else {
+						// Otherwise, just send a regular message
+						// Send the message and get the Discord message struct back
+						discordMsg, err := bc.session.ChannelMessageSend(bc.config.GetChannelID(), fullMessage)
+						if err != nil {
+							log.Println("Error sending message to", bc.getChannelIdentifier(), err.Error())
+						} else {
+							// Suppress the embeds on the message from the stream links
+							editMessage := discordgo.NewMessageEdit(bc.config.GetChannelID(), discordMsg.ID)
+							editMessage.Flags |= discordgo.MessageFlagsSuppressEmbeds
+							bc.session.ChannelMessageEditComplex(editMessage)
+						}
+					}
+				}
+			}
+			break
+		}
+
+	case ChannelResponseNoMatches:
+		{
+			bc.session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: ":robot: No matches today!",
+					Flags:   discordgo.MessageFlagsSuppressEmbeds,
+				},
+			})
+			break
+		}
+	case ChannelResponseFailedToRetrieveLeagues:
+		{
+			log.Printf("Failed to retrieve leagues from DataSource, channel %v", bc.getChannelIdentifier())
+			break
+		}
+	case ChannelResponseNoTiers:
+		{
+			bc.session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: "No tiers have been set up on this channel yet!",
+					Flags:   discordgo.MessageFlagsSuppressEmbeds,
+				},
+			})
+			break
+		}
+	}
 }
 
 func (bc *DotaBotChannel) SendMatchesOfTheDay() ChannelResponse {
@@ -240,10 +240,10 @@ func (bc *DotaBotChannel) SendMatchesOfTheDay() ChannelResponse {
 	//
 	//switch result {
 	//case ChannelResponseSuccess:
-	//	log.Printf("Tournament matches retrieved for channel %v, number of leagues %v", bc.getChannelIdentifier(), len(leagueMatchesSet))
+	//	log.Printf("BaseTournament matches retrieved for channel %v, number of leagues %v", bc.getChannelIdentifier(), len(leagueMatchesSet))
 	//	for _, leagueMatches := range leagueMatchesSet {
 	//		// Build up the message
-	//		message := ":robot: " + leagueMatches.Tournament.DisplayName + " games today!\n\n"
+	//		message := ":robot: " + leagueMatches.BaseTournament.DisplayName + " games today!\n\n"
 	//		matchesMessage := bc.generateDailyMatchMessage(leagueMatches)
 	//
 	//		if len(matchesMessage) > 0 {
@@ -288,7 +288,7 @@ func (bc *DotaBotChannel) SendMatchesOfTheDay() ChannelResponse {
 	//case ChannelResponseFailedToRetrieveLeagues:
 	//	log.Printf("Failed to retrieve leagues from DataSource for daily notification for channel %v", bc.getChannelIdentifier())
 	//	break
-	//case ChannelResponseNoLeagues:
+	//case ChannelResponseNoTiers:
 	//	log.Printf("Channel %v doesn't have any leagues configured for daily notification", bc.getChannelIdentifier())
 	//	break
 	//}
@@ -403,11 +403,27 @@ func (bc *DotaBotChannel) getMatchesToday(startingHour int, startingMinute int, 
 	// If there's no tournament tiers configured, let the channel know!
 	tiers := bc.GetTiers()
 	if len(tiers) == 0 {
-		return ChannelResponseNoLeagues, nil
+		return ChannelResponseNoTiers, nil
 	}
 
-	query := queries.NewGetTournamentsQuery(bc.GetTiers(), false)
-	tournaments, err := bc.queryCoordinator.GetTournaments(query)
+	parsingZone, err := bc.getParsingZone()
+	if err != nil {
+		return ChannelResponseNoMatches, nil
+	}
+
+	currentTime := time.Now()
+	startOfDay := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), startingHour, startingMinute, 0, 0, parsingZone)
+	endOfDay := startOfDay.Add(time.Hour * 24).Add(-time.Second)
+
+	query := &queries.GetUpcomingMatches{
+		GetMatches: queries.GetMatches{
+			BeginAt: queries.DateRange{
+				Start: startOfDay,
+				End:   endOfDay,
+			},
+		},
+	}
+	upcomingMatches, err := bc.queryCoordinator.GetUpcomingMatches(query)
 	if err != nil {
 		return ChannelResponseFailedToRetrieveLeagues, nil
 	}
@@ -423,32 +439,43 @@ func (bc *DotaBotChannel) getMatchesToday(startingHour int, startingMinute int, 
 	//	}
 	//}
 
-	if len(tournaments) == 0 {
+	if len(upcomingMatches) == 0 {
 		return ChannelResponseNoMatches, nil
+	}
+
+	// Create a map of tournaments to matches first, for the sake of ease...
+	tournamentMatchesMap := make(map[*types.BaseTournament][]*types.Match)
+	for _, match := range upcomingMatches {
+		tournamentMatches, found := tournamentMatchesMap[match.Tournament]
+		if !found {
+			tournamentMatchesMap[match.Tournament] = []*types.Match{match}
+		} else {
+			tournamentMatches = append(tournamentMatches, match)
+		}
 	}
 
 	var tournamentMatches []TournamentMatchesSet
 
 	// TODO: Definitely ways to improve and optimise this code :shrug:
 	// Could probably cache these things every X amount of time
-	for _, tournament := range tournaments {
+	for tournament, matches := range tournamentMatchesMap {
+		// If there's no matches today for this tournament, skip over
+		//var matches []*types.Match
+		//for _, match := range matches {
+		//	// TODO: Check actual time if match already completed
+		//	isWithinDay := bc.IsTimeWithinDayFrom(match.ScheduledTime, startingHour, startingMinute)
+		//	if !isWithinDay {
+		//		continue
+		//	}
+		//	matches = append(matches, match)
+		//}
+		if len(matches) == 0 {
+			continue
+		}
+
 		tournamentMatchesSet := TournamentMatchesSet{
 			Tournament: tournament,
 			Matches:    map[string][]*types.Match{},
-		}
-
-		// If there's no matches today for this tournament, skip over
-		var matches []*types.Match
-		for _, match := range tournament.Matches {
-			// TODO: Check actual time if match already completed
-			isWithinDay := bc.IsTimeWithinDayFrom(match.ScheduledTime, startingHour, startingMinute)
-			if !isWithinDay {
-				continue
-			}
-			matches = append(matches, match)
-		}
-		if len(matches) == 0 {
-			continue
 		}
 
 		// Then, let's sort the matches by start time

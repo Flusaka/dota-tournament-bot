@@ -6,6 +6,8 @@ import (
 )
 
 type DataSource interface {
-	GetTournaments(query *queries.GetTournaments) ([]*types.Tournament, error)
-	GetUpcomingMatches(query *queries.GetUpcomingMatches) ([]*types.Match, error)
+	GetTournaments(query *queries.GetTournaments) ([]types.Tournament, error)
+	GetRunningTournaments(query *queries.GetTournaments) ([]types.Tournament, error)
+	GetUpcomingTournaments(query *queries.GetTournaments) ([]types.Tournament, error)
+	GetUpcomingMatches(query *queries.GetUpcomingMatches) ([]types.Match, error)
 }

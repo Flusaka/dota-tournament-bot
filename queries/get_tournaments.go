@@ -6,19 +6,13 @@ import (
 )
 
 type GetTournaments struct {
-	Tiers    []types.Tier
-	Finished bool
+	Tiers []types.Tier
 }
 
-func NewGetTournamentsQuery(tiers []types.Tier, finished bool) *GetTournaments {
+func NewGetTournamentsQuery(tiers []types.Tier) *GetTournaments {
 	return &GetTournaments{
 		tiers,
-		finished,
 	}
-}
-
-func NewGetActiveTournamentsQuery(tiers []types.Tier) *GetTournaments {
-	return NewGetTournamentsQuery(tiers, false)
 }
 
 func (g GetTournaments) HashCode() (uint64, error) {

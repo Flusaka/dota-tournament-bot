@@ -19,10 +19,10 @@ func NewDefaultQueryCoordinator(dataSource bot.DataSource, queryResultCache cach
 	}
 }
 
-func (receiver *DefaultQueryCoordinator) GetTournaments(query *queries.GetTournaments) ([]*types.Tournament, error) {
+func (receiver *DefaultQueryCoordinator) GetTournaments(query *queries.GetTournaments) ([]types.Tournament, error) {
 	if receiver.queryResultCache.Has(query) {
 		cached := receiver.queryResultCache.Get(query)
-		return cached.([]*types.Tournament), nil
+		return cached.([]types.Tournament), nil
 	}
 
 	// TODO: Would be good to have a way to execute one query for multiple sources instead of executing per-source (i.e. channel)
@@ -34,10 +34,10 @@ func (receiver *DefaultQueryCoordinator) GetTournaments(query *queries.GetTourna
 	return result, nil
 }
 
-func (receiver *DefaultQueryCoordinator) GetUpcomingMatches(query *queries.GetUpcomingMatches) ([]*types.Match, error) {
+func (receiver *DefaultQueryCoordinator) GetUpcomingMatches(query *queries.GetUpcomingMatches) ([]types.Match, error) {
 	if receiver.queryResultCache.Has(query) {
 		cached := receiver.queryResultCache.Get(query)
-		return cached.([]*types.Match), nil
+		return cached.([]types.Match), nil
 	}
 
 	result, err := receiver.dataSource.GetUpcomingMatches(query)

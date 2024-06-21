@@ -181,7 +181,7 @@ var (
 					return
 				}
 
-				channel := NewDotaBotChannelWithConfig(s, config, b.dataSource)
+				channel := NewDotaBotChannelWithConfig(s, config, b.coordinator)
 				b.channels[i.ChannelID] = &Channel{
 					BotChannel: channel,
 					Config:     config,
@@ -365,21 +365,21 @@ type Channel struct {
 type DotaBot struct {
 	guildID                 string
 	channelConfigRepository ChannelConfigRepository
-	dataSource              DataSource
+	coordinator             QueryCoordinator
 	session                 *discordgo.Session
 	channels                map[string]*Channel
 	registeredCommands      []*discordgo.ApplicationCommand
 }
 
-func NewDotaBot(dataSourceClient DataSource, channelConfigRepository ChannelConfigRepository) *DotaBot {
-	return NewDotaBotWithGuildID(dataSourceClient, channelConfigRepository, "")
+func NewDotaBot(coordinator QueryCoordinator, channelConfigRepository ChannelConfigRepository) *DotaBot {
+	return NewDotaBotWithGuildID(coordinator, channelConfigRepository, "")
 }
 
-func NewDotaBotWithGuildID(dataSource DataSource, channelConfigRepository ChannelConfigRepository, guildID string) *DotaBot {
+func NewDotaBotWithGuildID(coordinator QueryCoordinator, channelConfigRepository ChannelConfigRepository, guildID string) *DotaBot {
 	b := &DotaBot{
 		guildID:                 guildID,
 		channelConfigRepository: channelConfigRepository,
-		dataSource:              dataSource,
+		coordinator:             coordinator,
 		channels:                make(map[string]*Channel),
 	}
 	return b
@@ -431,7 +431,7 @@ func (b *DotaBot) Initialise(token string) error {
 		for _, config := range configs {
 			log.Println("Restarting channel on ID", config.GetChannelID())
 			b.channels[config.GetChannelID()] = &Channel{
-				BotChannel: NewDotaBotChannelWithConfig(b.session, config, b.dataSource),
+				BotChannel: NewDotaBotChannelWithConfig(b.session, config, b.coordinator),
 				Config:     config,
 			}
 

@@ -1,13 +1,15 @@
 package datasource
 
 import (
+	"fmt"
 	"github.com/flusaka/dota-tournament-bot/queries"
 	"github.com/flusaka/dota-tournament-bot/types"
 	"github.com/flusaka/dota-tournament-bot/utils"
 	"github.com/flusaka/pandascore-go"
 	"github.com/flusaka/pandascore-go/clients"
 	psquery "github.com/flusaka/pandascore-go/clients/queries"
-	types2 "github.com/flusaka/pandascore-go/types"
+	pstypes "github.com/flusaka/pandascore-go/types"
+	"golang.org/x/exp/slices"
 )
 
 type PandascoreDataSource struct {
@@ -29,13 +31,13 @@ func (ps *PandascoreDataSource) GetRunningTournaments(query *queries.GetTourname
 	if err != nil {
 		return nil, err
 	}
-	tournaments := utils.MapStructTo[types2.Tournament, types.Tournament](running, func(input types2.Tournament) types.Tournament {
+	tournaments := utils.MapStructTo[pstypes.Tournament, types.Tournament](running, func(input pstypes.Tournament) types.Tournament {
 		return types.Tournament{
 			BaseTournament: types.BaseTournament{
 				ID:          input.Id,
 				DisplayName: input.Name,
 			},
-			Matches: utils.MapStructTo[types2.BaseMatch, types.BaseMatch](input.Matches, func(input types2.BaseMatch) types.BaseMatch {
+			Matches: utils.MapStructTo[pstypes.BaseMatch, types.BaseMatch](input.Matches, func(input pstypes.BaseMatch) types.BaseMatch {
 				var streamUrl = ""
 				for _, stream := range input.StreamsList {
 					if stream.Language == "en" && stream.Official {
@@ -60,13 +62,13 @@ func (ps *PandascoreDataSource) GetUpcomingTournaments(query *queries.GetTournam
 	if err != nil {
 		return nil, err
 	}
-	tournaments := utils.MapStructTo[types2.Tournament, types.Tournament](running, func(input types2.Tournament) types.Tournament {
+	tournaments := utils.MapStructTo[pstypes.Tournament, types.Tournament](running, func(input pstypes.Tournament) types.Tournament {
 		return types.Tournament{
 			BaseTournament: types.BaseTournament{
 				ID:          input.Id,
 				DisplayName: input.Name,
 			},
-			Matches: utils.MapStructTo[types2.BaseMatch, types.BaseMatch](input.Matches, func(input types2.BaseMatch) types.BaseMatch {
+			Matches: utils.MapStructTo[pstypes.BaseMatch, types.BaseMatch](input.Matches, func(input pstypes.BaseMatch) types.BaseMatch {
 				var streamUrl = ""
 				for _, stream := range input.StreamsList {
 					if stream.Language == "en" && stream.Official {
@@ -89,10 +91,10 @@ func (ps *PandascoreDataSource) GetUpcomingTournaments(query *queries.GetTournam
 func (ps *PandascoreDataSource) GetUpcomingMatches(query *queries.GetUpcomingMatches) ([]types.Match, error) {
 	upcoming, err := ps.pandascoreClient.Dota2.GetUpcomingMatchesWithParams(clients.MatchParams{
 		Range: psquery.MatchRange{
-			//BeginAt: &psquery.DateRange{
-			//	Lower: query.BeginAt.Start,
-			//	Upper: query.BeginAt.End,
-			//},
+			BeginAt: &psquery.DateRange{
+				Lower: query.BeginAt.Start,
+				Upper: query.BeginAt.End,
+			},
 		},
 		Sort: psquery.NewMatchSort([]psquery.MatchSortField{
 			{
@@ -104,6 +106,15 @@ func (ps *PandascoreDataSource) GetUpcomingMatches(query *queries.GetUpcomingMat
 	if err != nil {
 		return nil, err
 	}
+
+	for _, match := range upcoming {
+		fmt.Printf("Match: %v, Tournament: %v, Tier: %v\n", match.Name, match.Tournament.Name, match.Tournament.Tier)
+	}
+
+	upcoming = utils.FilterWhere[pstypes.Match](upcoming, func(element pstypes.Match) bool {
+		return isIncludedTier(query.Tiers, pstypes.Tier(element.Tournament.Tier))
+	})
+
 	matches := make([]types.Match, 0, len(upcoming))
 	for _, match := range upcoming {
 		var streamUrl = ""
@@ -135,13 +146,41 @@ func (ps *PandascoreDataSource) GetUpcomingMatches(query *queries.GetUpcomingMat
 				ScheduledTime: match.BeginAt.Unix(),
 				StreamUrl:     streamUrl,
 			},
-			Tournament: types.Tournament{
-				BaseTournament: types.BaseTournament{
-					ID:          match.TournamentId,
-					DisplayName: match.Tournament.Name,
-				},
+			Tournament: types.BaseTournament{
+				ID:          match.TournamentId,
+				DisplayName: match.Tournament.Name,
 			},
 		})
 	}
 	return matches, nil
+}
+
+func isIncludedTier(expectedTiers []types.Tier, actualTier pstypes.Tier) bool {
+	var mappedTiers = make([]pstypes.Tier, len(expectedTiers))
+	for i, tier := range expectedTiers {
+		switch tier {
+		case types.TierS:
+			{
+				mappedTiers[i] = pstypes.TierS
+			}
+		case types.TierA:
+			{
+				mappedTiers[i] = pstypes.TierA
+			}
+		case types.TierB:
+			{
+				mappedTiers[i] = pstypes.TierB
+			}
+		case types.TierC:
+			{
+				mappedTiers[i] = pstypes.TierC
+			}
+		case types.TierD:
+			{
+				mappedTiers[i] = pstypes.TierD
+			}
+		}
+	}
+	fmt.Printf("Expected tiers: %v, Actual Tier: %v\n", mappedTiers, actualTier)
+	return slices.Contains(mappedTiers, actualTier)
 }

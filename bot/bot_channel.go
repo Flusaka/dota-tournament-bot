@@ -36,15 +36,23 @@ var (
 	}
 )
 
-type StreamMatchMap map[string][]*types.Match
+type StreamMatchMap map[string][]types.Match
 
 type TournamentMatchesSet struct {
-	Tournament *types.BaseTournament
+	Tournament types.BaseTournament
 	Matches    StreamMatchMap
 }
 
+type ChannelSession interface {
+	InteractionRespond(interaction *discordgo.Interaction, resp *discordgo.InteractionResponse, options ...discordgo.RequestOption) error
+	ChannelMessageSend(channelID string, message string, options ...discordgo.RequestOption) (*discordgo.Message, error)
+	ChannelMessageEditComplex(m *discordgo.MessageEdit, options ...discordgo.RequestOption) (st *discordgo.Message, err error)
+	Channel(channelID string, options ...discordgo.RequestOption) (*discordgo.Channel, error)
+	Guild(guildID string, options ...discordgo.RequestOption) (*discordgo.Guild, error)
+}
+
 type DotaBotChannel struct {
-	session                    *discordgo.Session
+	session                    ChannelSession
 	config                     ChannelConfig
 	queryCoordinator           QueryCoordinator
 	notificationTicker         *time.Ticker
@@ -55,7 +63,7 @@ type DotaBotChannel struct {
 	cachedMatches              map[int]map[int]*types.Match
 }
 
-func NewDotaBotChannelWithConfig(session *discordgo.Session, config ChannelConfig, queryCoordinator QueryCoordinator) *DotaBotChannel {
+func NewDotaBotChannelWithConfig(session ChannelSession, config ChannelConfig, queryCoordinator QueryCoordinator) *DotaBotChannel {
 	cancelMatchEventsListening := make(chan bool, 1)
 	dotaBotChannel := &DotaBotChannel{
 		session:                    session,
@@ -347,24 +355,24 @@ func (bc *DotaBotChannel) HandleMessageComponentInteraction(interaction *discord
 
 func (bc *DotaBotChannel) generateDailyMatchMessage(tournamentMatches TournamentMatchesSet) string {
 	message := ""
-	//if len(leagueMatches.Matches) == 0 {
-	//	log.Printf("There are no matches in league %v", leagueMatches.League.DisplayName)
-	//}
-	//for streamUrl, streamMatches := range leagueMatches.Matches {
-	//	if streamUrl == UnknownStreamKey {
-	//		streamUrl = "https://twitch.tv (Channel Unknown)"
-	//	}
-	//	message += "Games on: " + streamUrl + "\n"
-	//	for _, streamMatch := range streamMatches {
-	//		startTime := fmt.Sprintf("<t:%d:t>", streamMatch.ScheduledTime)
-	//
-	//		// If TeamOne is undetermined, use the TeamOneSourceMatch field to determine the teams to display
-	//		teamOneComponent := bc.generateTeamMessageComponent(streamMatch.TeamOne, streamMatch.TeamOneSourceMatch)
-	//		teamTwoComponent := bc.generateTeamMessageComponent(streamMatch.TeamTwo, streamMatch.TeamTwoSourceMatch)
-	//		message += startTime + " - " + teamOneComponent + " vs " + teamTwoComponent + "\n"
-	//	}
-	//	message += "\n"
-	//}
+	if len(tournamentMatches.Matches) == 0 {
+		log.Printf("There are no matches in league %v", tournamentMatches.Tournament.DisplayName)
+	}
+	for streamUrl, streamMatches := range tournamentMatches.Matches {
+		if streamUrl == UnknownStreamKey {
+			streamUrl = "https://twitch.tv (Channel Unknown)"
+		}
+		message += "Games on: " + streamUrl + "\n"
+		for _, streamMatch := range streamMatches {
+			startTime := fmt.Sprintf("<t:%d:t>", streamMatch.ScheduledTime)
+
+			// If TeamOne is undetermined, use the TeamOneSourceMatch field to determine the teams to display
+			teamOneComponent := bc.generateTeamMessageComponent(streamMatch.TeamOne, nil)
+			teamTwoComponent := bc.generateTeamMessageComponent(streamMatch.TeamTwo, nil)
+			message += startTime + " - " + teamOneComponent + " vs " + teamTwoComponent + "\n"
+		}
+		message += "\n"
+	}
 	return message
 }
 
@@ -421,6 +429,7 @@ func (bc *DotaBotChannel) getMatchesToday(startingHour int, startingMinute int, 
 				Start: startOfDay,
 				End:   endOfDay,
 			},
+			Tiers: bc.GetTiers(),
 		},
 	}
 	upcomingMatches, err := bc.queryCoordinator.GetUpcomingMatches(query)
@@ -444,11 +453,11 @@ func (bc *DotaBotChannel) getMatchesToday(startingHour int, startingMinute int, 
 	}
 
 	// Create a map of tournaments to matches first, for the sake of ease...
-	tournamentMatchesMap := make(map[*types.BaseTournament][]*types.Match)
+	tournamentMatchesMap := make(map[types.BaseTournament][]types.Match)
 	for _, match := range upcomingMatches {
 		tournamentMatches, found := tournamentMatchesMap[match.Tournament]
 		if !found {
-			tournamentMatchesMap[match.Tournament] = []*types.Match{match}
+			tournamentMatchesMap[match.Tournament] = []types.Match{match}
 		} else {
 			tournamentMatches = append(tournamentMatches, match)
 		}
@@ -475,7 +484,7 @@ func (bc *DotaBotChannel) getMatchesToday(startingHour int, startingMinute int, 
 
 		tournamentMatchesSet := TournamentMatchesSet{
 			Tournament: tournament,
-			Matches:    map[string][]*types.Match{},
+			Matches:    map[string][]types.Match{},
 		}
 
 		// Then, let's sort the matches by start time

@@ -7,6 +7,14 @@ github.com/flusaka/pandascore-go v0.0.0-20240518165647-ce8b89d9ba74 h1:DIo5S1ph4
 github.com/flusaka/pandascore-go v0.0.0-20240518165647-ce8b89d9ba74/go.mod h1:pNIDefnEMrQQbqJKf0xIoNmjJF3kphRXPjgx6ZpOKkc=
 github.com/flusaka/pandascore-go v0.0.0-20240610085145-6140645b170e h1:bMukAMG6LZiAnLWkPr1+HjXP3fVmMsKE9qbFKWBVrak=
 github.com/flusaka/pandascore-go v0.0.0-20240610085145-6140645b170e/go.mod h1:pNIDefnEMrQQbqJKf0xIoNmjJF3kphRXPjgx6ZpOKkc=
+github.com/flusaka/pandascore-go v0.0.0-20240622131825-6b58d369ec44 h1:HNTU2kJLz2DbpPpLIrMqbb+LjLU1uDmcJq0TOupRhgk=
+github.com/flusaka/pandascore-go v0.0.0-20240622131825-6b58d369ec44/go.mod h1:pNIDefnEMrQQbqJKf0xIoNmjJF3kphRXPjgx6ZpOKkc=
+github.com/flusaka/pandascore-go v0.0.0-20240622133411-eb77e3439d0c h1:SHbOyNZ1QVo7avZ0QjopyMYlqt97fkzDUWZT/WhCpTQ=
+github.com/flusaka/pandascore-go v0.0.0-20240622133411-eb77e3439d0c/go.mod h1:pNIDefnEMrQQbqJKf0xIoNmjJF3kphRXPjgx6ZpOKkc=
+github.com/flusaka/pandascore-go v0.0.0-20240622133520-6908ab4fcdd0 h1:CVF/WZw5vmxVb45mHOSfupgnCmYcrkIEG/83ImN0cyQ=
+github.com/flusaka/pandascore-go v0.0.0-20240622133520-6908ab4fcdd0/go.mod h1:pNIDefnEMrQQbqJKf0xIoNmjJF3kphRXPjgx6ZpOKkc=
+github.com/flusaka/pandascore-go v0.0.0-20240622145506-a9e4718ffbb3 h1:EnTuU7aoAcAaO2MEyn3Ezv6mXVOz3rfSIdylh3SlFGc=
+github.com/flusaka/pandascore-go v0.0.0-20240622145506-a9e4718ffbb3/go.mod h1:pNIDefnEMrQQbqJKf0xIoNmjJF3kphRXPjgx6ZpOKkc=
 github.com/golang/snappy v0.0.1 h1:Qgr9rKW7uDUkrbSmQeiDsGa8SjGyCOGtuasMWwvp2P4=
 github.com/golang/snappy v0.0.1/go.mod h1:/XxbfmMg8lxefKM7IXC3fBNl/7bRcc72aCRzEWrmP2Q=
 github.com/google/go-cmp v0.5.2/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=

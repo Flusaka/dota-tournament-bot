@@ -12,4 +12,6 @@ type BaseMatch struct {
 type Match struct {
 	BaseMatch
 	Tournament BaseTournament
+	Serie      BaseSerie
+	League     BaseLeague
 }

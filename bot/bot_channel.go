@@ -6,7 +6,6 @@ import (
 	"github.com/flusaka/dota-tournament-bot/queries"
 	"github.com/flusaka/dota-tournament-bot/types"
 	"log"
-	"sort"
 	"time"
 )
 
@@ -36,11 +35,15 @@ var (
 	}
 )
 
-type StreamMatchMap map[string][]types.Match
+type StreamMatchMap = map[string][]types.Match
+type TournamentMatchDetails struct {
+	StreamMatches StreamMatchMap
+	Title         string
+}
 
-type TournamentMatchesSet struct {
+type TournamentDetailsSet struct {
 	Tournament types.BaseTournament
-	Matches    StreamMatchMap
+	Details    TournamentMatchDetails
 }
 
 type ChannelSession interface {
@@ -174,38 +177,40 @@ func (bc *DotaBotChannel) SendMatchesOfTheDayInResponseTo(interaction *discordgo
 		{
 			interactionRespondedTo := false
 			for _, tournamentMatches := range tournamentMatchesSet {
+				if len(tournamentMatches.Details.StreamMatches) == 0 {
+					continue
+				}
+
 				// Build up the message
-				message := ":robot: " + tournamentMatches.Tournament.DisplayName + " games today!\n\n"
+				message := ":robot: " + tournamentMatches.Details.Title + " games today!\n\n"
 				matchesMessage := bc.generateDailyMatchMessage(tournamentMatches)
 
-				if len(matchesMessage) > 0 {
-					fullMessage := message + matchesMessage
-					// If we haven't responded to the interaction yet, do that first
-					if !interactionRespondedTo {
-						err := bc.session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
-							Type: discordgo.InteractionResponseChannelMessageWithSource,
-							Data: &discordgo.InteractionResponseData{
-								Content: fullMessage,
-								Flags:   discordgo.MessageFlagsSuppressEmbeds,
-							},
-						})
-						// If there was no error responding to the interaction, it's been responded to
-						interactionRespondedTo = err == nil
-						if err != nil {
-							log.Printf("Error responding to /today %v", err)
-						}
+				fullMessage := message + matchesMessage
+				// If we haven't responded to the interaction yet, do that first
+				if !interactionRespondedTo {
+					err := bc.session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
+						Type: discordgo.InteractionResponseChannelMessageWithSource,
+						Data: &discordgo.InteractionResponseData{
+							Content: fullMessage,
+							Flags:   discordgo.MessageFlagsSuppressEmbeds,
+						},
+					})
+					// If there was no error responding to the interaction, it's been responded to
+					interactionRespondedTo = err == nil
+					if err != nil {
+						log.Printf("Error responding to /today %v", err)
+					}
+				} else {
+					// Otherwise, just send a regular message
+					// Send the message and get the Discord message struct back
+					discordMsg, err := bc.session.ChannelMessageSend(bc.config.GetChannelID(), fullMessage)
+					if err != nil {
+						log.Println("Error sending message to", bc.getChannelIdentifier(), err.Error())
 					} else {
-						// Otherwise, just send a regular message
-						// Send the message and get the Discord message struct back
-						discordMsg, err := bc.session.ChannelMessageSend(bc.config.GetChannelID(), fullMessage)
-						if err != nil {
-							log.Println("Error sending message to", bc.getChannelIdentifier(), err.Error())
-						} else {
-							// Suppress the embeds on the message from the stream links
-							editMessage := discordgo.NewMessageEdit(bc.config.GetChannelID(), discordMsg.ID)
-							editMessage.Flags |= discordgo.MessageFlagsSuppressEmbeds
-							bc.session.ChannelMessageEditComplex(editMessage)
-						}
+						// Suppress the embeds on the message from the stream links
+						editMessage := discordgo.NewMessageEdit(bc.config.GetChannelID(), discordMsg.ID)
+						editMessage.Flags |= discordgo.MessageFlagsSuppressEmbeds
+						bc.session.ChannelMessageEditComplex(editMessage)
 					}
 				}
 			}
@@ -353,12 +358,12 @@ func (bc *DotaBotChannel) HandleMessageComponentInteraction(interaction *discord
 	//}
 }
 
-func (bc *DotaBotChannel) generateDailyMatchMessage(tournamentMatches TournamentMatchesSet) string {
+func (bc *DotaBotChannel) generateDailyMatchMessage(tournamentMatches TournamentDetailsSet) string {
 	message := ""
-	if len(tournamentMatches.Matches) == 0 {
+	if len(tournamentMatches.Details.StreamMatches) == 0 {
 		log.Printf("There are no matches in league %v", tournamentMatches.Tournament.DisplayName)
 	}
-	for streamUrl, streamMatches := range tournamentMatches.Matches {
+	for streamUrl, streamMatches := range tournamentMatches.Details.StreamMatches {
 		if streamUrl == UnknownStreamKey {
 			streamUrl = "https://twitch.tv (Channel Unknown)"
 		}
@@ -386,7 +391,7 @@ func (bc *DotaBotChannel) generateTeamMessageComponent(team *types.Team, teamSou
 	return "TBD"
 }
 
-func (bc *DotaBotChannel) buildNotificationSelectionOptions(tournamentMatches TournamentMatchesSet) []discordgo.SelectMenuOption {
+func (bc *DotaBotChannel) buildNotificationSelectionOptions(tournamentMatches TournamentDetailsSet) []discordgo.SelectMenuOption {
 	var options []discordgo.SelectMenuOption
 	//for _, streamMatches := range leagueMatches.Matches {
 	//	for _, match := range streamMatches {
@@ -407,7 +412,7 @@ func (bc *DotaBotChannel) buildNotificationSelectionOptions(tournamentMatches To
 	return options
 }
 
-func (bc *DotaBotChannel) getMatchesToday(startingHour int, startingMinute int, cache bool) (ChannelResponse, []TournamentMatchesSet) {
+func (bc *DotaBotChannel) getMatchesToday(startingHour int, startingMinute int, cache bool) (ChannelResponse, []TournamentDetailsSet) {
 	// If there's no tournament tiers configured, let the channel know!
 	tiers := bc.GetTiers()
 	if len(tiers) == 0 {
@@ -423,16 +428,14 @@ func (bc *DotaBotChannel) getMatchesToday(startingHour int, startingMinute int, 
 	startOfDay := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), startingHour, startingMinute, 0, 0, parsingZone)
 	endOfDay := startOfDay.Add(time.Hour * 24).Add(-time.Second)
 
-	query := &queries.GetUpcomingMatches{
-		GetMatches: queries.GetMatches{
-			BeginAt: queries.DateRange{
-				Start: startOfDay,
-				End:   endOfDay,
-			},
-			Tiers: bc.GetTiers(),
+	query := &queries.GetMatches{
+		BeginAt: queries.DateRange{
+			Start: startOfDay,
+			End:   endOfDay,
 		},
+		Tiers: bc.GetTiers(),
 	}
-	upcomingMatches, err := bc.queryCoordinator.GetUpcomingMatches(query)
+	upcomingMatches, err := bc.queryCoordinator.GetMatches(query)
 	if err != nil {
 		return ChannelResponseFailedToRetrieveLeagues, nil
 	}
@@ -453,53 +456,48 @@ func (bc *DotaBotChannel) getMatchesToday(startingHour int, startingMinute int, 
 	}
 
 	// Create a map of tournaments to matches first, for the sake of ease...
-	tournamentMatchesMap := make(map[types.BaseTournament][]types.Match)
+	tournamentMatchesMap := make(map[int][]types.Match)
 	for _, match := range upcomingMatches {
-		tournamentMatches, found := tournamentMatchesMap[match.Tournament]
+		_, found := tournamentMatchesMap[match.Tournament.ID]
 		if !found {
-			tournamentMatchesMap[match.Tournament] = []types.Match{match}
+			tournamentMatchesMap[match.Tournament.ID] = []types.Match{match}
 		} else {
-			tournamentMatches = append(tournamentMatches, match)
+			tournamentMatchesMap[match.Tournament.ID] = append(tournamentMatchesMap[match.Tournament.ID], match)
 		}
 	}
 
-	var tournamentMatches []TournamentMatchesSet
+	var tournamentMatches []TournamentDetailsSet
 
 	// TODO: Definitely ways to improve and optimise this code :shrug:
 	// Could probably cache these things every X amount of time
-	for tournament, matches := range tournamentMatchesMap {
+	for _, matches := range tournamentMatchesMap {
 		// If there's no matches today for this tournament, skip over
-		//var matches []*types.Match
-		//for _, match := range matches {
-		//	// TODO: Check actual time if match already completed
-		//	isWithinDay := bc.IsTimeWithinDayFrom(match.ScheduledTime, startingHour, startingMinute)
-		//	if !isWithinDay {
-		//		continue
-		//	}
-		//	matches = append(matches, match)
-		//}
 		if len(matches) == 0 {
 			continue
 		}
 
-		tournamentMatchesSet := TournamentMatchesSet{
-			Tournament: tournament,
-			Matches:    map[string][]types.Match{},
+		tournamentMatchesSet := TournamentDetailsSet{
+			Tournament: matches[0].Tournament,
+			Details: TournamentMatchDetails{
+				StreamMatches: StreamMatchMap{},
+				Title:         fmt.Sprintf("%v: %v - %v", matches[0].League.Name, matches[0].Serie.Name, matches[0].Tournament.DisplayName),
+			},
 		}
 
+		// NOTE: Shouldn't need this anymore as the matches are sorted by API when queried
 		// Then, let's sort the matches by start time
-		sort.Slice(matches, func(i, j int) bool {
-			// TODO: Check actual time if match already completed
-			return matches[i].ScheduledTime < matches[j].ScheduledTime
-		})
+		//sort.Slice(matches, func(i, j int) bool {
+		//	// TODO: Check actual time if match already completed
+		//	return matches[i].ScheduledTime < matches[j].ScheduledTime
+		//})
 
 		// Finally, make a map of streams to matches
 		for _, match := range matches {
 			// If the stream URL for the match is valid, use that as the key in the map and append to that array
 			if match.StreamUrl != "" {
-				tournamentMatchesSet.Matches[match.StreamUrl] = append(tournamentMatchesSet.Matches[match.StreamUrl], match)
+				tournamentMatchesSet.Details.StreamMatches[match.StreamUrl] = append(tournamentMatchesSet.Details.StreamMatches[match.StreamUrl], match)
 			} else { // Otherwise just add it to the UnknownStreamKey array and key
-				tournamentMatchesSet.Matches[UnknownStreamKey] = append(tournamentMatchesSet.Matches[UnknownStreamKey], match)
+				tournamentMatchesSet.Details.StreamMatches[UnknownStreamKey] = append(tournamentMatchesSet.Details.StreamMatches[UnknownStreamKey], match)
 			}
 		}
 

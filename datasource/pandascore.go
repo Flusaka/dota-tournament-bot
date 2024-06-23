@@ -38,12 +38,7 @@ func (ps *PandascoreDataSource) GetRunningTournaments(query *queries.GetTourname
 				DisplayName: input.Name,
 			},
 			Matches: utils.MapStructTo[pstypes.BaseMatch, types.BaseMatch](input.Matches, func(input pstypes.BaseMatch) types.BaseMatch {
-				var streamUrl = ""
-				for _, stream := range input.StreamsList {
-					if stream.Language == "en" && stream.Official {
-						streamUrl = stream.RawUrl
-					}
-				}
+				streamUrl := getBestStreamUrl(input.StreamsList)
 
 				return types.BaseMatch{
 					ID:            input.Id,
@@ -69,12 +64,7 @@ func (ps *PandascoreDataSource) GetUpcomingTournaments(query *queries.GetTournam
 				DisplayName: input.Name,
 			},
 			Matches: utils.MapStructTo[pstypes.BaseMatch, types.BaseMatch](input.Matches, func(input pstypes.BaseMatch) types.BaseMatch {
-				var streamUrl = ""
-				for _, stream := range input.StreamsList {
-					if stream.Language == "en" && stream.Official {
-						streamUrl = stream.RawUrl
-					}
-				}
+				streamUrl := getBestStreamUrl(input.StreamsList)
 
 				return types.BaseMatch{
 					ID:            input.Id,
@@ -86,6 +76,74 @@ func (ps *PandascoreDataSource) GetUpcomingTournaments(query *queries.GetTournam
 		}
 	})
 	return tournaments, nil
+}
+
+func (ps *PandascoreDataSource) GetMatches(query *queries.GetMatches) ([]types.Match, error) {
+	matches, err := ps.pandascoreClient.Dota2.GetMatchesWithParams(clients.MatchParams{
+		Range: psquery.MatchRange{
+			ScheduledAt: &psquery.DateRange{
+				Lower: query.BeginAt.Start,
+				Upper: query.BeginAt.End,
+			},
+		},
+		Sort: psquery.NewMatchSort([]psquery.MatchSortField{
+			{
+				FieldName:  psquery.MatchSortScheduledAt,
+				Descending: false,
+			},
+		}),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, match := range matches {
+		fmt.Printf("Match: %v, Tournament: %v, Tier: %v\n", match.Name, match.Tournament.Name, match.Tournament.Tier)
+	}
+
+	matches = utils.FilterWhere[pstypes.Match](matches, func(element pstypes.Match) bool {
+		return isIncludedTier(query.Tiers, element.Tournament.Tier)
+	})
+
+	result := make([]types.Match, 0, len(matches))
+	for _, match := range matches {
+		streamUrl := getBestStreamUrl(match.StreamsList)
+
+		teamOneName := "TBD"
+		teamTwoName := "TBD"
+
+		if len(match.Opponents) > 0 {
+			teamOneName = match.Opponents[0].Opponent.Name
+		}
+		if len(match.Opponents) > 1 {
+			teamTwoName = match.Opponents[1].Opponent.Name
+		}
+
+		result = append(result, types.Match{
+			BaseMatch: types.BaseMatch{
+				ID: match.Id,
+				TeamOne: &types.Team{
+					DisplayName: teamOneName,
+				},
+				TeamTwo: &types.Team{
+					DisplayName: teamTwoName,
+				},
+				ScheduledTime: match.ScheduledAt.Unix(),
+				StreamUrl:     streamUrl,
+			},
+			Tournament: types.BaseTournament{
+				ID:          match.TournamentId,
+				DisplayName: match.Tournament.Name,
+			},
+			Serie: types.BaseSerie{
+				Name: match.Serie.Name,
+			},
+			League: types.BaseLeague{
+				Name: match.League.Name,
+			},
+		})
+	}
+	return result, nil
 }
 
 func (ps *PandascoreDataSource) GetUpcomingMatches(query *queries.GetUpcomingMatches) ([]types.Match, error) {
@@ -107,31 +165,22 @@ func (ps *PandascoreDataSource) GetUpcomingMatches(query *queries.GetUpcomingMat
 		return nil, err
 	}
 
-	for _, match := range upcoming {
-		fmt.Printf("Match: %v, Tournament: %v, Tier: %v\n", match.Name, match.Tournament.Name, match.Tournament.Tier)
-	}
-
 	upcoming = utils.FilterWhere[pstypes.Match](upcoming, func(element pstypes.Match) bool {
-		return isIncludedTier(query.Tiers, pstypes.Tier(element.Tournament.Tier))
+		return isIncludedTier(query.Tiers, element.Tournament.Tier)
 	})
 
 	matches := make([]types.Match, 0, len(upcoming))
 	for _, match := range upcoming {
-		var streamUrl = ""
-		for _, stream := range match.StreamsList {
-			if stream.Language == "en" && stream.Official {
-				streamUrl = stream.RawUrl
-			}
-		}
+		streamUrl := getBestStreamUrl(match.StreamsList)
 
 		teamOneName := "TBD"
 		teamTwoName := "TBD"
 
 		if len(match.Opponents) > 0 {
-			teamOneName = match.Opponents[0].Name
+			teamOneName = match.Opponents[0].Opponent.Name
 		}
 		if len(match.Opponents) > 1 {
-			teamTwoName = match.Opponents[1].Name
+			teamTwoName = match.Opponents[1].Opponent.Name
 		}
 
 		matches = append(matches, types.Match{
@@ -143,7 +192,7 @@ func (ps *PandascoreDataSource) GetUpcomingMatches(query *queries.GetUpcomingMat
 				TeamTwo: &types.Team{
 					DisplayName: teamTwoName,
 				},
-				ScheduledTime: match.BeginAt.Unix(),
+				ScheduledTime: match.ScheduledAt.Unix(),
 				StreamUrl:     streamUrl,
 			},
 			Tournament: types.BaseTournament{
@@ -183,4 +232,18 @@ func isIncludedTier(expectedTiers []types.Tier, actualTier pstypes.Tier) bool {
 	}
 	fmt.Printf("Expected tiers: %v, Actual Tier: %v\n", mappedTiers, actualTier)
 	return slices.Contains(mappedTiers, actualTier)
+}
+
+func getBestStreamUrl(streamList []pstypes.BaseStream) string {
+	streamUrl := ""
+	for _, stream := range streamList {
+		// If we find an official stream in English at any point, return that
+		if stream.Language == "en" && stream.Official {
+			streamUrl = stream.RawUrl
+			break
+		} else if stream.Official && streamUrl == "" { // Backup: We at least find the first official stream, even if it's not English, but we continue in case we have an English stream
+			streamUrl = stream.RawUrl
+		}
+	}
+	return streamUrl
 }

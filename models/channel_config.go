@@ -26,7 +26,7 @@ func NewChannelConfig(channelID string) *ChannelConfig {
 		Timezone: "GMT",
 
 		// Default to S and A tiers
-		Tiers: []types.Tier{types.TierS, types.TierA},
+		Tiers: []types.Tier{types.TierS, types.TierA, types.TierB},
 
 		DailyMessageHour:          0,
 		DailyMessageMinute:        0,

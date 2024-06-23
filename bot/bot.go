@@ -4,7 +4,9 @@ import (
 	"context"
 	"github.com/bwmarrin/discordgo"
 	"github.com/flusaka/dota-tournament-bot/types"
+	"github.com/flusaka/dota-tournament-bot/utils"
 	"log"
+	"time"
 )
 
 const (
@@ -49,15 +51,15 @@ var (
 		},
 		{
 			Name:        tierCommandKey,
-			Description: "Add/remove the leagues to be notified about",
+			Description: "Add/remove the tiers to be notified about",
 			Options: []*discordgo.ApplicationCommandOption{
 				{
 					Name:        tierAddCommandKey,
-					Description: "Add the specified league selection to the notification list",
+					Description: "Add the specified tier selection to the notification list",
 					Options: []*discordgo.ApplicationCommandOption{
 						{
-							Name:        "league",
-							Description: "The league to add",
+							Name:        "tier",
+							Description: "The tier to add",
 							Type:        discordgo.ApplicationCommandOptionString,
 							Required:    true,
 							Choices: []*discordgo.ApplicationCommandOptionChoice{
@@ -88,11 +90,11 @@ var (
 				},
 				{
 					Name:        tierRemoveCommandKey,
-					Description: "Remove the specified league selection to the notification list",
+					Description: "Remove the specified tier selection to the notification list",
 					Options: []*discordgo.ApplicationCommandOption{
 						{
-							Name:        "league",
-							Description: "The league to remove",
+							Name:        "tier",
+							Description: "The tier to remove",
 							Type:        discordgo.ApplicationCommandOptionString,
 							Required:    true,
 							Choices: []*discordgo.ApplicationCommandOptionChoice{
@@ -175,7 +177,7 @@ var (
 					s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 						Type: discordgo.InteractionResponseChannelMessageWithSource,
 						Data: &discordgo.InteractionResponseData{
-							Content: "An error occured when trying to connect DotaBot to this channel :(",
+							Content: "An error occurred when trying to connect DotaBot to this channel :(",
 						},
 					})
 					return
@@ -199,10 +201,22 @@ var (
 				if len(i.ApplicationCommandData().Options) > 0 {
 					// Update Timezone to Config first
 					timezone := i.ApplicationCommandData().Options[0].StringValue()
-					channel.Config.SetTimezone(timezone)
-					err := b.channelConfigRepository.Update(context.TODO(), channel.Config)
 
-					// TODO: Pass the updated config to the bot, or tell it to refresh?
+					_, err := utils.GetFullLocation(timezone)
+					if err != nil {
+						s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+							Type: discordgo.InteractionResponseChannelMessageWithSource,
+							Data: &discordgo.InteractionResponseData{
+								Content: "Unsupported timezone entered",
+							},
+						})
+					}
+
+					if timezone != channel.Config.GetTimezone() {
+						channel.Config.SetTimezone(timezone)
+						err = b.channelConfigRepository.Replace(context.TODO(), channel.Config)
+						// TODO: Revert timezone if error?
+					}
 
 					if err != nil {
 						s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -212,6 +226,8 @@ var (
 							},
 						})
 					} else {
+						channel.BotChannel.RefreshNotifications()
+
 						s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 							Type: discordgo.InteractionResponseChannelMessageWithSource,
 							Data: &discordgo.InteractionResponseData{
@@ -243,23 +259,41 @@ var (
 		},
 		dailyCommandKey: func(b *DotaBot, s *discordgo.Session, i *discordgo.InteractionCreate) {
 			if channel, ok := b.channels[i.ChannelID]; ok {
-				time := i.ApplicationCommandData().Options[0].StringValue()
-				// TODO: Parse string in correct format and get hours and minutes values
-				channel.Config.SetDailyMessageTime(0, 0)
-				err := b.channelConfigRepository.Update(context.TODO(), channel.Config)
+				// Parse string in correct format and get hours and minutes values
+				timeStr := i.ApplicationCommandData().Options[0].StringValue()
 
-				// TODO: Update channel bot instance
+				activeTimeZone, err := time.LoadLocation(channel.Config.GetTimezone())
+				parsingZone := time.FixedZone(time.Now().In(activeTimeZone).Zone())
+				dailyTime, err := time.ParseInLocation(time.Kitchen, timeStr, parsingZone)
+
+				// Validate no errors with the input time format
 				if err != nil {
 					s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 						Type: discordgo.InteractionResponseChannelMessageWithSource,
 						Data: &discordgo.InteractionResponseData{Content: "Invalid time format! Please make sure use full 12-hour time format - e.g. 10:00AM"},
 					})
-				} else {
+					return
+				}
+
+				channel.Config.SetDailyMessageTime(dailyTime.Hour(), dailyTime.Minute())
+				err = b.channelConfigRepository.Replace(context.Background(), channel.Config)
+				// TODO: Perhaps revert config back to old time?
+
+				// Validate no errors with actually saving to database
+				if err != nil {
 					s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 						Type: discordgo.InteractionResponseChannelMessageWithSource,
-						Data: &discordgo.InteractionResponseData{Content: "Daily notification set to " + time},
+						Data: &discordgo.InteractionResponseData{Content: "Failed to update daily notification time, please try again later!"},
 					})
+					return
 				}
+
+				channel.BotChannel.RefreshNotifications()
+
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{Content: "Daily notification set to " + timeStr},
+				})
 			} else {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -272,10 +306,14 @@ var (
 		notifyDailyCommandKey: func(b *DotaBot, s *discordgo.Session, i *discordgo.InteractionCreate) {
 			if channel, ok := b.channels[i.ChannelID]; ok {
 				notificationsEnabled := i.ApplicationCommandData().Options[0].BoolValue()
-				channel.Config.SetDailyNotificationsEnabled(notificationsEnabled)
-				b.channelConfigRepository.Update(context.TODO(), channel.Config)
+				if notificationsEnabled != channel.Config.GetDailyNotificationsEnabled() {
+					channel.Config.SetDailyNotificationsEnabled(notificationsEnabled)
+					err := b.channelConfigRepository.Replace(context.TODO(), channel.Config)
+					if err != nil {
+						channel.BotChannel.EnableDailyNotifications(notificationsEnabled)
+					}
+				}
 
-				// TODO: Trigger the start/stop of daily notifications on this channel
 				if notificationsEnabled {
 					s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 						Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -306,25 +344,33 @@ var (
 					{
 						addedSuccessfully := channel.Config.AddTier(types.Tier(tierValue))
 						if addedSuccessfully {
+							b.channelConfigRepository.Replace(context.Background(), channel.Config)
 							s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 								Type: discordgo.InteractionResponseChannelMessageWithSource,
-								Data: &discordgo.InteractionResponseData{Content: "Tournament added successfully!"},
+								Data: &discordgo.InteractionResponseData{Content: "Tier added successfully!"},
 							})
 						} else {
 							s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 								Type: discordgo.InteractionResponseChannelMessageWithSource,
-								Data: &discordgo.InteractionResponseData{Content: "Tournament has already been added"},
+								Data: &discordgo.InteractionResponseData{Content: "Tier has already been added"},
 							})
 						}
 						break
 					}
 				case tierRemoveCommandKey:
 					{
-						channel.Config.RemoveTier(types.Tier(tierValue))
-						s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-							Type: discordgo.InteractionResponseChannelMessageWithSource,
-							Data: &discordgo.InteractionResponseData{Content: "Tournament removed successfully!"},
-						})
+						wasRemoved := channel.Config.RemoveTier(types.Tier(tierValue))
+						if wasRemoved {
+							s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+								Type: discordgo.InteractionResponseChannelMessageWithSource,
+								Data: &discordgo.InteractionResponseData{Content: "Tier removed successfully!"},
+							})
+						} else {
+							s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+								Type: discordgo.InteractionResponseChannelMessageWithSource,
+								Data: &discordgo.InteractionResponseData{Content: "Tier has not been added"},
+							})
+						}
 						break
 					}
 				}
@@ -369,10 +415,6 @@ type DotaBot struct {
 	session                 *discordgo.Session
 	channels                map[string]*Channel
 	registeredCommands      []*discordgo.ApplicationCommand
-}
-
-func NewDotaBot(coordinator QueryCoordinator, channelConfigRepository ChannelConfigRepository) *DotaBot {
-	return NewDotaBotWithGuildID(coordinator, channelConfigRepository, "")
 }
 
 func NewDotaBotWithGuildID(coordinator QueryCoordinator, channelConfigRepository ChannelConfigRepository, guildID string) *DotaBot {
@@ -436,7 +478,7 @@ func (b *DotaBot) Initialise(token string) error {
 			}
 
 			// Call update on the config in case there's new values added that should go into the database
-			b.channelConfigRepository.Update(context.TODO(), config)
+			b.channelConfigRepository.Replace(context.TODO(), config)
 		}
 
 		// Sync commands
@@ -508,6 +550,15 @@ func (b *DotaBot) syncCommands() error {
 			} else {
 				log.Printf("Successfully created command %s in guild %s", cmd.Name, b.guildID)
 			}
+		}
+	}
+	return nil
+}
+
+func (b *DotaBot) getRegisteredCommandByName(cmdName string) *discordgo.ApplicationCommand {
+	for _, registered := range b.registeredCommands {
+		if registered.Name == cmdName {
+			return registered
 		}
 	}
 	return nil

@@ -5,6 +5,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/flusaka/dota-tournament-bot/queries"
 	"github.com/flusaka/dota-tournament-bot/types"
+	"github.com/flusaka/dota-tournament-bot/utils"
 	"log"
 	"time"
 )
@@ -28,13 +29,6 @@ const (
 	NotificationValueDelimiter = ","
 )
 
-var (
-	timezoneShortcodeFullMap = map[string]string{
-		"GMT": "Europe/London",
-		"EET": "Europe/Helsinki",
-	}
-)
-
 type StreamMatchMap = map[string][]types.Match
 type TournamentMatchDetails struct {
 	StreamMatches StreamMatchMap
@@ -49,6 +43,7 @@ type TournamentDetailsSet struct {
 type ChannelSession interface {
 	InteractionRespond(interaction *discordgo.Interaction, resp *discordgo.InteractionResponse, options ...discordgo.RequestOption) error
 	ChannelMessageSend(channelID string, message string, options ...discordgo.RequestOption) (*discordgo.Message, error)
+	ChannelMessageSendComplex(channelID string, message *discordgo.MessageSend, options ...discordgo.RequestOption) (*discordgo.Message, error)
 	ChannelMessageEditComplex(m *discordgo.MessageEdit, options ...discordgo.RequestOption) (st *discordgo.Message, err error)
 	Channel(channelID string, options ...discordgo.RequestOption) (*discordgo.Channel, error)
 	Guild(guildID string, options ...discordgo.RequestOption) (*discordgo.Guild, error)
@@ -89,7 +84,8 @@ func (bc *DotaBotChannel) Close() {
 	bc.stopDailyNotifications()
 }
 
-func (bc *DotaBotChannel) EnableDailyNotifications(enabled bool) ChannelResponse {
+func (bc *DotaBotChannel) EnableDailyNotifications(enabled bool) {
+	// TODO: Move this check to Bot
 	//if len(bc.config.Tiers) == 0 {
 	//	return ChannelResponseNoTiers
 	//}
@@ -104,65 +100,68 @@ func (bc *DotaBotChannel) EnableDailyNotifications(enabled bool) ChannelResponse
 	//	bc.config.DailyNotificationsEnabled = enabled
 	//	bc.config.Update()
 	//}
-	return ChannelResponseSuccess
+
+	if enabled {
+		bc.startDailyNotifications()
+	} else {
+		bc.stopDailyNotifications()
+	}
 }
 
 func (bc *DotaBotChannel) startDailyNotifications() {
-	//log.Printf("Restarting daily notifications on %v", bc.getChannelIdentifier())
-	//timeUntilNotification, err := bc.calculateTimeUntilNextNotification()
-	//if err != nil {
-	//	return
-	//}
-	//
-	//bc.cancelDailyNotifications = make(chan bool)
-	//bc.notificationTicker = time.NewTicker(timeUntilNotification)
-	//
-	//go func() {
-	//	for {
-	//		select {
-	//		case <-bc.notificationTicker.C:
-	//			log.Printf("Ticker alarm activated! Attempting to send matches of the day to channel ID %v", bc.getChannelIdentifier())
-	//			bc.SendMatchesOfTheDay()
-	//
-	//			// Reset the daily notifications to 24 hours on from this ticker event
-	//			bc.notificationTicker.Reset(24 * time.Hour)
-	//		case <-bc.cancelDailyNotifications:
-	//			return
-	//		}
-	//	}
-	//}()
+	log.Printf("Starting daily notifications on %v\n", bc.getChannelIdentifier())
+	timeUntilNotification, err := bc.calculateTimeUntilNextNotification()
+	if err != nil {
+		return
+	}
+
+	bc.cancelDailyNotifications = make(chan bool)
+	bc.notificationTicker = time.NewTicker(timeUntilNotification)
+
+	go func() {
+		for {
+			select {
+			case <-bc.notificationTicker.C:
+				log.Printf("Ticker alarm activated! Attempting to send matches of the day to channel ID %v\n", bc.getChannelIdentifier())
+				bc.sendMatchesOfTheDay()
+
+				// Reset the daily notifications to 24 hours on from this ticker event
+				bc.notificationTicker.Reset(24 * time.Hour)
+			case <-bc.cancelDailyNotifications:
+				return
+			}
+		}
+	}()
 }
 
 func (bc *DotaBotChannel) stopDailyNotifications() {
-	//log.Printf("Daily notifications stopped for channel ID %v", bc.getChannelIdentifier())
-	//close(bc.cancelDailyNotifications)
-	//bc.notificationTicker = nil
+	log.Printf("Daily notifications stopped for channel ID %v\n", bc.getChannelIdentifier())
+	close(bc.cancelDailyNotifications)
+	bc.notificationTicker = nil
 }
 
 func (bc *DotaBotChannel) calculateTimeUntilNextNotification() (time.Duration, error) {
-	//// Calculate time until next daily notifications should be sent
-	//now := time.Now()
-	//zone, err := bc.getParsingZone()
-	//if err != nil {
-	//	return 0, err
-	//}
-	//nowInTimezone := now.In(zone)
-	//
-	//// If notification time is still available today, then set notification day to today, otherwise tomorrow
-	//day := now.Day()
-	//if nowInTimezone.Hour() > bc.config.DailyMessageHour || (nowInTimezone.Hour() == bc.config.DailyMessageHour && nowInTimezone.Minute() >= bc.config.DailyMessageMinute) {
-	//	day++
-	//}
-	//
-	//// Create a time object in the current location set to the notification time
-	//firstNotificationTime := time.Date(nowInTimezone.Year(), nowInTimezone.Month(), day, bc.config.DailyMessageHour, bc.config.DailyMessageMinute, 0, 0, zone)
-	//timeUntilNotification := firstNotificationTime.Sub(nowInTimezone)
-	//return timeUntilNotification, nil
-	return time.Minute * 5, nil
+	// Calculate time until next daily notifications should be sent
+	now := time.Now()
+	zone, err := bc.getParsingZone()
+	if err != nil {
+		return 0, err
+	}
+	nowInTimezone := now.In(zone)
+
+	// If notification time is still available today, then set notification day to today, otherwise tomorrow
+	day := now.Day()
+	if nowInTimezone.Hour() > bc.config.GetDailyMessageHour() || (nowInTimezone.Hour() == bc.config.GetDailyMessageMinute() && nowInTimezone.Minute() >= bc.config.GetDailyMessageMinute()) {
+		day++
+	}
+
+	// Create a time object in the current location set to the notification time
+	firstNotificationTime := time.Date(nowInTimezone.Year(), nowInTimezone.Month(), day, bc.config.GetDailyMessageHour(), bc.config.GetDailyMessageMinute(), 0, 0, zone)
+	timeUntilNotification := firstNotificationTime.Sub(nowInTimezone)
+	return timeUntilNotification, nil
 }
 
 func (bc *DotaBotChannel) SendMatchesOfTheDayInResponseTo(interaction *discordgo.InteractionCreate) {
-
 	startingHour := 0
 	startingMinute := 0
 
@@ -198,7 +197,7 @@ func (bc *DotaBotChannel) SendMatchesOfTheDayInResponseTo(interaction *discordgo
 					// If there was no error responding to the interaction, it's been responded to
 					interactionRespondedTo = err == nil
 					if err != nil {
-						log.Printf("Error responding to /today %v", err)
+						log.Printf("Error responding to /today %v\n", err)
 					}
 				} else {
 					// Otherwise, just send a regular message
@@ -230,7 +229,7 @@ func (bc *DotaBotChannel) SendMatchesOfTheDayInResponseTo(interaction *discordgo
 		}
 	case ChannelResponseFailedToRetrieveLeagues:
 		{
-			log.Printf("Failed to retrieve leagues from DataSource, channel %v", bc.getChannelIdentifier())
+			log.Printf("Failed to retrieve leagues from DataSource, channel %v\n", bc.getChannelIdentifier())
 			break
 		}
 	case ChannelResponseNoTiers:
@@ -247,65 +246,63 @@ func (bc *DotaBotChannel) SendMatchesOfTheDayInResponseTo(interaction *discordgo
 	}
 }
 
-func (bc *DotaBotChannel) SendMatchesOfTheDay() ChannelResponse {
-	result := ChannelResponseSuccess
-	//result, leagueMatchesSet := bc.getMatchesToday(bc.config.DailyMessageHour, bc.config.DailyMessageMinute, true)
-	//
-	//switch result {
-	//case ChannelResponseSuccess:
-	//	log.Printf("BaseTournament matches retrieved for channel %v, number of leagues %v", bc.getChannelIdentifier(), len(leagueMatchesSet))
-	//	for _, leagueMatches := range leagueMatchesSet {
-	//		// Build up the message
-	//		message := ":robot: " + leagueMatches.BaseTournament.DisplayName + " games today!\n\n"
-	//		matchesMessage := bc.generateDailyMatchMessage(leagueMatches)
-	//
-	//		if len(matchesMessage) > 0 {
-	//			minValues := 0
-	//			matchNotificationOptions := bc.buildNotificationSelectionOptions(leagueMatches)
-	//
-	//			// Send the message and get the Discord message struct back
-	//			messageSend := &discordgo.MessageSend{
-	//				Content: message + matchesMessage,
-	//				Components: []discordgo.MessageComponent{
-	//					discordgo.ActionsRow{
-	//						Components: []discordgo.MessageComponent{
-	//							discordgo.SelectMenu{
-	//								CustomID:    NotificationSelectMenuID,
-	//								Placeholder: "Select matches to be notified of",
-	//								MenuType:    discordgo.StringSelectMenu,
-	//								MinValues:   &minValues,
-	//								MaxValues:   len(matchNotificationOptions),
-	//								Options:     matchNotificationOptions,
-	//							},
-	//						},
-	//					},
-	//				},
-	//			}
-	//			discordMsg, err := bc.session.ChannelMessageSendComplex(bc.config.ChannelID, messageSend)
-	//			if err != nil {
-	//				log.Println("Error sending message to", bc.getChannelIdentifier(), err.Error())
-	//			} else {
-	//				// Suppress the embeds on the message from the stream links
-	//				editMessage := discordgo.NewMessageEdit(bc.config.ChannelID, discordMsg.ID)
-	//				editMessage.Flags |= discordgo.MessageFlagsSuppressEmbeds
-	//				bc.session.ChannelMessageEditComplex(editMessage)
-	//			}
-	//		} else {
-	//			log.Printf("Matches message is empty for some reason, channel %v", bc.getChannelIdentifier())
-	//		}
-	//	}
-	//	break
-	//case ChannelResponseNoMatches:
-	//	log.Printf("Failed to retrieve leagues from DataSource for daily notification for channel %v", bc.getChannelIdentifier())
-	//	break
-	//case ChannelResponseFailedToRetrieveLeagues:
-	//	log.Printf("Failed to retrieve leagues from DataSource for daily notification for channel %v", bc.getChannelIdentifier())
-	//	break
-	//case ChannelResponseNoTiers:
-	//	log.Printf("Channel %v doesn't have any leagues configured for daily notification", bc.getChannelIdentifier())
-	//	break
-	//}
-	return result
+func (bc *DotaBotChannel) sendMatchesOfTheDay() {
+	result, tournamentDetailsSet := bc.getMatchesToday(bc.config.GetDailyMessageHour(), bc.config.GetDailyMessageMinute(), true)
+
+	switch result {
+	case ChannelResponseSuccess:
+		log.Printf("Matches retrieved for channel %v, number of sets %v\n", bc.getChannelIdentifier(), len(tournamentDetailsSet))
+		for _, tournamentMatches := range tournamentDetailsSet {
+			// Build up the message
+			message := ":robot: " + tournamentMatches.Details.Title + " games today!\n\n"
+			matchesMessage := bc.generateDailyMatchMessage(tournamentMatches)
+
+			if len(matchesMessage) > 0 {
+				//minValues := 0
+				//matchNotificationOptions := bc.buildNotificationSelectionOptions(tournamentMatches)
+
+				// Send the message and get the Discord message struct back
+				messageSend := &discordgo.MessageSend{
+					Content: message + matchesMessage,
+					//Components: []discordgo.MessageComponent{
+					//	discordgo.ActionsRow{
+					//		Components: []discordgo.MessageComponent{
+					//			discordgo.SelectMenu{
+					//				CustomID:    NotificationSelectMenuID,
+					//				Placeholder: "Select matches to be notified of",
+					//				MenuType:    discordgo.StringSelectMenu,
+					//				MinValues:   &minValues,
+					//				MaxValues:   len(matchNotificationOptions),
+					//				Options:     matchNotificationOptions,
+					//			},
+					//		},
+					//	},
+					//},
+				}
+				discordMsg, err := bc.session.ChannelMessageSendComplex(bc.config.GetChannelID(), messageSend)
+				if err != nil {
+					log.Println("Error sending message to", bc.getChannelIdentifier(), err.Error())
+				} else {
+					// Suppress the embeds on the message from the stream links
+					editMessage := discordgo.NewMessageEdit(bc.config.GetChannelID(), discordMsg.ID)
+					editMessage.Flags |= discordgo.MessageFlagsSuppressEmbeds
+					bc.session.ChannelMessageEditComplex(editMessage)
+				}
+			} else {
+				log.Printf("Matches message is empty for some reason, channel %v\n", bc.getChannelIdentifier())
+			}
+		}
+		break
+	case ChannelResponseNoMatches:
+		log.Printf("Failed to retrieve leagues from DataSource for daily notification for channel %v\n", bc.getChannelIdentifier())
+		break
+	case ChannelResponseFailedToRetrieveLeagues:
+		log.Printf("Failed to retrieve leagues from DataSource for daily notification for channel %v\n", bc.getChannelIdentifier())
+		break
+	case ChannelResponseNoTiers:
+		log.Printf("Channel %v doesn't have any leagues configured for daily notification\n", bc.getChannelIdentifier())
+		break
+	}
 }
 
 func (bc *DotaBotChannel) HandleMessageComponentInteraction(interaction *discordgo.InteractionCreate) {
@@ -361,7 +358,7 @@ func (bc *DotaBotChannel) HandleMessageComponentInteraction(interaction *discord
 func (bc *DotaBotChannel) generateDailyMatchMessage(tournamentMatches TournamentDetailsSet) string {
 	message := ""
 	if len(tournamentMatches.Details.StreamMatches) == 0 {
-		log.Printf("There are no matches in league %v", tournamentMatches.Tournament.DisplayName)
+		log.Printf("There are no matches in tournament %v\n", tournamentMatches.Details.Title)
 	}
 	for streamUrl, streamMatches := range tournamentMatches.Details.StreamMatches {
 		if streamUrl == UnknownStreamKey {
@@ -414,7 +411,7 @@ func (bc *DotaBotChannel) buildNotificationSelectionOptions(tournamentMatches To
 
 func (bc *DotaBotChannel) getMatchesToday(startingHour int, startingMinute int, cache bool) (ChannelResponse, []TournamentDetailsSet) {
 	// If there's no tournament tiers configured, let the channel know!
-	tiers := bc.GetTiers()
+	tiers := bc.getTiers()
 	if len(tiers) == 0 {
 		return ChannelResponseNoTiers, nil
 	}
@@ -433,7 +430,7 @@ func (bc *DotaBotChannel) getMatchesToday(startingHour int, startingMinute int, 
 			Start: startOfDay,
 			End:   endOfDay,
 		},
-		Tiers: bc.GetTiers(),
+		Tiers: bc.getTiers(),
 	}
 	upcomingMatches, err := bc.queryCoordinator.GetMatches(query)
 	if err != nil {
@@ -510,21 +507,7 @@ func (bc *DotaBotChannel) getMatchesToday(startingHour int, startingMinute int, 
 	return ChannelResponseSuccess, tournamentMatches
 }
 
-func (bc *DotaBotChannel) UpdateTimezone(timezone string) error {
-	actualTimezone, err := bc.getActualTimezoneLocation(timezone)
-	if err != nil {
-		return fmt.Errorf("timezone is unsupported")
-	}
-
-	_, err = time.LoadLocation(actualTimezone)
-	if err != nil {
-		return err
-	}
-
-	// TODO: Needs moving to Bot level
-	//bc.config.Timezone = timezone
-	//bc.config.Update()
-
+func (bc *DotaBotChannel) RefreshNotifications() {
 	// Update the existing timer, if it's not nil
 	if bc.notificationTicker != nil {
 		timeUntilNotification, err := bc.calculateTimeUntilNextNotification()
@@ -532,87 +515,10 @@ func (bc *DotaBotChannel) UpdateTimezone(timezone string) error {
 			bc.notificationTicker.Reset(timeUntilNotification)
 		}
 	}
-
-	return nil
 }
 
-func (bc *DotaBotChannel) UpdateDailyMessageTime(timeString string) error {
-	// TODO: Move logic into Bot
-	//activeTimeZone, err := time.LoadLocation(bc.config.GetTimezone())
-	//parsingZone := time.FixedZone(time.Now().In(activeTimeZone).Zone())
-	//dailyTime, err := time.ParseInLocation(time.Kitchen, timeString, parsingZone)
-	//
-	//if err != nil {
-	//	return err
-	//}
-	//
-	//bc.config.DailyMessageHour = dailyTime.Hour()
-	//bc.config.DailyMessageMinute = dailyTime.Minute()
-	//bc.config.Update()
-	//
-	//// Update the existing timer, if it's not nil
-	//if bc.notificationTicker != nil {
-	//	timeUntilNotification, err := bc.calculateTimeUntilNextNotification()
-	//	if err == nil {
-	//		bc.notificationTicker.Reset(timeUntilNotification)
-	//	}
-	//}
-
-	return nil
-}
-
-func (bc *DotaBotChannel) GetTiers() []types.Tier {
+func (bc *DotaBotChannel) getTiers() []types.Tier {
 	return bc.config.GetTiers()
-}
-
-func (bc *DotaBotChannel) AddTier(tier types.Tier) bool {
-	// TODO: Move logic into Bot
-	// TODO: Maybe change to error response
-	//for _, existingLeague := range bc.config.GetTiers() {
-	//	if existingLeague == tier {
-	//		return false
-	//	}
-	//}
-	//bc.config.Leagues = append(bc.config.Leagues, tier)
-	//bc.config.Update()
-	return true
-}
-
-func (bc *DotaBotChannel) RemoveLeague(league types.Tier) {
-	// TODO: Move logic into Bot
-	//var leagues []types.Tier
-	//for _, existingLeague := range bc.config.Leagues {
-	//	if existingLeague != league {
-	//		leagues = append(leagues, existingLeague)
-	//	}
-	//}
-	//bc.config.Leagues = leagues
-	//bc.config.Update()
-}
-
-func (bc *DotaBotChannel) GetTimeInZone(timestamp int64) (time.Time, error) {
-	parsingZone, err := bc.getParsingZone()
-	if err != nil {
-		return time.Now(), err
-	}
-	return time.Unix(timestamp, 0).In(parsingZone), nil
-}
-
-func (bc *DotaBotChannel) IsTimeWithinDayFrom(timestamp int64, startingHour int, startingMinute int) bool {
-	// This is a bit awkward, need to think of a better way to break down this logic
-	parsingZone, err := bc.getParsingZone()
-	if err != nil {
-		return false
-	}
-	convertedTime, err := bc.GetTimeInZone(timestamp)
-	if err != nil {
-		return false
-	}
-
-	currentTime := time.Now()
-	startOfDay := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), startingHour, startingMinute, 0, 0, parsingZone)
-	endOfDay := startOfDay.Add(time.Hour * 24).Add(-time.Second)
-	return convertedTime.After(startOfDay) && convertedTime.Before(endOfDay)
 }
 
 func (bc *DotaBotChannel) listenForMatchEvents() {
@@ -648,21 +554,13 @@ func (bc *DotaBotChannel) listenForMatchEvents() {
 }
 
 func (bc *DotaBotChannel) getParsingZone() (*time.Location, error) {
-	actualTimezone, err := bc.getActualTimezoneLocation(bc.config.GetTimezone())
+	actualTimezone, err := utils.GetFullLocation(bc.config.GetTimezone())
 	activeTimeZone, err := time.LoadLocation(actualTimezone)
 	if err != nil {
 		return nil, err
 	}
 	currentTime := time.Now().In(activeTimeZone)
 	return time.FixedZone(currentTime.Zone()), nil
-}
-
-func (bc *DotaBotChannel) getActualTimezoneLocation(timezone string) (string, error) {
-	actualTimezone, timezoneExistsInMap := timezoneShortcodeFullMap[timezone]
-	if !timezoneExistsInMap {
-		return "", fmt.Errorf("timezone is unsupported")
-	}
-	return actualTimezone, nil
 }
 
 func (bc *DotaBotChannel) getChannel() (*discordgo.Channel, error) {

@@ -20,12 +20,13 @@ type ChannelConfig interface {
 
 	GetTiers() []types.Tier
 	AddTier(tier types.Tier) bool
-	RemoveTier(tier types.Tier)
+	RemoveTier(tier types.Tier) bool
 }
 
 type ChannelConfigRepository interface {
 	GetAll(ctx context.Context) ([]ChannelConfig, error)
 	Create(ctx context.Context, channelID string) (ChannelConfig, error)
 	Update(ctx context.Context, config ChannelConfig) error
+	Replace(ctx context.Context, config ChannelConfig) error
 	Delete(ctx context.Context, config ChannelConfig) error
 }

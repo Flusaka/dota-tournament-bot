@@ -1,7 +1,6 @@
 package datasource
 
 import (
-	"fmt"
 	"github.com/flusaka/dota-tournament-bot/queries"
 	"github.com/flusaka/dota-tournament-bot/types"
 	"github.com/flusaka/dota-tournament-bot/utils"
@@ -95,10 +94,6 @@ func (ps *PandascoreDataSource) GetMatches(query *queries.GetMatches) ([]types.M
 	})
 	if err != nil {
 		return nil, err
-	}
-
-	for _, match := range matches {
-		fmt.Printf("Match: %v, Tournament: %v, Tier: %v\n", match.Name, match.Tournament.Name, match.Tournament.Tier)
 	}
 
 	matches = utils.FilterWhere[pstypes.Match](matches, func(element pstypes.Match) bool {
@@ -230,7 +225,6 @@ func isIncludedTier(expectedTiers []types.Tier, actualTier pstypes.Tier) bool {
 			}
 		}
 	}
-	fmt.Printf("Expected tiers: %v, Actual Tier: %v\n", mappedTiers, actualTier)
 	return slices.Contains(mappedTiers, actualTier)
 }
 

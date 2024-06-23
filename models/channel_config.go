@@ -50,7 +50,9 @@ func (c *ChannelConfig) GetTimezone() string {
 }
 
 func (c *ChannelConfig) SetTimezone(timezone string) {
+	// TODO: Validate time zone
 	c.Timezone = timezone
+	c.UpdatedAt = time.Now().UTC()
 }
 
 func (c *ChannelConfig) GetDailyMessageHour() int {
@@ -64,6 +66,7 @@ func (c *ChannelConfig) GetDailyMessageMinute() int {
 func (c *ChannelConfig) SetDailyMessageTime(hour int, minute int) {
 	c.DailyMessageHour = hour
 	c.DailyMessageMinute = minute
+	c.UpdatedAt = time.Now().UTC()
 }
 
 func (c *ChannelConfig) GetDailyNotificationsEnabled() bool {
@@ -72,6 +75,7 @@ func (c *ChannelConfig) GetDailyNotificationsEnabled() bool {
 
 func (c *ChannelConfig) SetDailyNotificationsEnabled(enabled bool) {
 	c.DailyNotificationsEnabled = enabled
+	c.UpdatedAt = time.Now().UTC()
 }
 
 func (c *ChannelConfig) GetTiers() []types.Tier {
@@ -87,15 +91,21 @@ func (c *ChannelConfig) AddTier(tier types.Tier) bool {
 	}
 	// Otherwise append it and return true
 	c.Tiers = append(c.Tiers, tier)
+	c.UpdatedAt = time.Now().UTC()
 	return true
 }
 
-func (c *ChannelConfig) RemoveTier(tier types.Tier) {
+func (c *ChannelConfig) RemoveTier(tier types.Tier) bool {
 	var tiers []types.Tier
 	for _, existingTier := range c.Tiers {
 		if existingTier != tier {
 			tiers = append(tiers, existingTier)
 		}
 	}
+	wasRemoved := len(tiers) < len(c.Tiers)
 	c.Tiers = tiers
+	if wasRemoved {
+		c.UpdatedAt = time.Now().UTC()
+	}
+	return wasRemoved
 }

@@ -24,6 +24,11 @@ func (s *MockChannelSession) ChannelMessageSend(channelID string, message string
 	return args.Get(0).(*discordgo.Message), args.Error(1)
 }
 
+func (s *MockChannelSession) ChannelMessageSendComplex(channelID string, m *discordgo.MessageSend, options ...discordgo.RequestOption) (st *discordgo.Message, err error) {
+	args := s.Called(m, options)
+	return args.Get(0).(*discordgo.Message), args.Error(1)
+}
+
 func (s *MockChannelSession) ChannelMessageEditComplex(m *discordgo.MessageEdit, options ...discordgo.RequestOption) (st *discordgo.Message, err error) {
 	args := s.Called(m, options)
 	return args.Get(0).(*discordgo.Message), args.Error(1)
@@ -41,6 +46,11 @@ func (s *MockChannelSession) Guild(guildID string, options ...discordgo.RequestO
 
 type MockCoordinator struct {
 	mock.Mock
+}
+
+func (m *MockCoordinator) GetMatches(query *queries.GetMatches) ([]types.Match, error) {
+	args := m.Called(query)
+	return args.Get(0).([]types.Match), args.Error(1)
 }
 
 func (m *MockCoordinator) GetTournaments(query *queries.GetTournaments) ([]types.Tournament, error) {
@@ -80,7 +90,7 @@ func TestDotaBotChannel_SendMatchesOfTheDayInResponseTo(t *testing.T) {
 		},
 	}
 
-	coordinator.On("GetUpcomingMatches", mock.Anything).Return(matches, nil)
+	coordinator.On("GetMatches", mock.Anything).Return(matches, nil)
 	channelSession.On("InteractionRespond", interactionCreate.Interaction, mock.Anything, mock.Anything).Return(nil)
 
 	botChannel.SendMatchesOfTheDayInResponseTo(interactionCreate)

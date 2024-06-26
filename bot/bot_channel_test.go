@@ -5,6 +5,7 @@ import (
 	"github.com/flusaka/dota-tournament-bot/models"
 	"github.com/flusaka/dota-tournament-bot/queries"
 	"github.com/flusaka/dota-tournament-bot/types"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
 	"time"
@@ -97,4 +98,137 @@ func TestDotaBotChannel_SendMatchesOfTheDayInResponseTo(t *testing.T) {
 
 	coordinator.AssertExpectations(t)
 	channelSession.AssertExpectations(t)
+}
+
+func TestGetTournamentTitle_ReturnsFullCombinedName_IfTournamentSerieAndLeagueHaveNames(t *testing.T) {
+	match := types.Match{
+		BaseMatch: types.BaseMatch{},
+		Tournament: types.BaseTournament{
+			DisplayName: "Tournament",
+		},
+		Serie: types.BaseSerie{
+			Name: "Serie",
+		},
+		League: types.BaseLeague{
+			Name: "League",
+		},
+	}
+
+	title := getTournamentTitle(match)
+
+	assert.Equal(t, "League: Serie - Tournament", title)
+}
+
+func TestGetTournamentTitle_ReturnsCombinedLeagueSerieName_IfOnlyLeagueAndSerieHaveNames(t *testing.T) {
+	match := types.Match{
+		BaseMatch: types.BaseMatch{},
+		Tournament: types.BaseTournament{
+			DisplayName: "",
+		},
+		Serie: types.BaseSerie{
+			Name: "Serie",
+		},
+		League: types.BaseLeague{
+			Name: "League",
+		},
+	}
+
+	title := getTournamentTitle(match)
+
+	assert.Equal(t, "League: Serie", title)
+}
+
+func TestGetTournamentTitle_ReturnsCombinedLeagueTournamentName_IfOnlyLeagueAndTournamentHaveNames(t *testing.T) {
+	match := types.Match{
+		BaseMatch: types.BaseMatch{},
+		Tournament: types.BaseTournament{
+			DisplayName: "Tournament",
+		},
+		Serie: types.BaseSerie{
+			Name: "",
+		},
+		League: types.BaseLeague{
+			Name: "League",
+		},
+	}
+
+	title := getTournamentTitle(match)
+
+	assert.Equal(t, "League - Tournament", title)
+}
+
+func TestGetTournamentTitle_ReturnsCombinedSerieTournamentName_IfOnlySerieAndTournamentHaveNames(t *testing.T) {
+	match := types.Match{
+		BaseMatch: types.BaseMatch{},
+		Tournament: types.BaseTournament{
+			DisplayName: "Tournament",
+		},
+		Serie: types.BaseSerie{
+			Name: "Serie",
+		},
+		League: types.BaseLeague{
+			Name: "",
+		},
+	}
+
+	title := getTournamentTitle(match)
+
+	assert.Equal(t, "Serie - Tournament", title)
+}
+
+func TestGetTournamentTitle_ReturnsLeagueName_IfOnlyLeagueHasName(t *testing.T) {
+	match := types.Match{
+		BaseMatch: types.BaseMatch{},
+		Tournament: types.BaseTournament{
+			DisplayName: "",
+		},
+		Serie: types.BaseSerie{
+			Name: "",
+		},
+		League: types.BaseLeague{
+			Name: "League",
+		},
+	}
+
+	title := getTournamentTitle(match)
+
+	assert.Equal(t, "League", title)
+}
+
+func TestGetTournamentTitle_ReturnsSerieName_IfOnlySerieHasName(t *testing.T) {
+	match := types.Match{
+		BaseMatch: types.BaseMatch{},
+		Tournament: types.BaseTournament{
+			DisplayName: "",
+		},
+		Serie: types.BaseSerie{
+			Name: "",
+		},
+		League: types.BaseLeague{
+			Name: "League",
+		},
+	}
+
+	title := getTournamentTitle(match)
+
+	assert.Equal(t, "League", title)
+}
+
+func TestGetTournamentTitle_ReturnsTournamentName_IfOnlyTournamentHasName(t *testing.T) {
+	match := types.Match{
+		BaseMatch: types.BaseMatch{},
+		Tournament: types.BaseTournament{
+			DisplayName: "Tournament",
+		},
+		Serie: types.BaseSerie{
+			Name: "",
+		},
+		League: types.BaseLeague{
+			Name: "",
+		},
+	}
+
+	title := getTournamentTitle(match)
+
+	assert.Equal(t, "Tournament", title)
 }

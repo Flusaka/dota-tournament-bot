@@ -477,7 +477,7 @@ func (bc *DotaBotChannel) getMatchesToday(startingHour int, startingMinute int, 
 			Tournament: matches[0].Tournament,
 			Details: TournamentMatchDetails{
 				StreamMatches: StreamMatchMap{},
-				Title:         fmt.Sprintf("%v: %v - %v", matches[0].League.Name, matches[0].Serie.Name, matches[0].Tournament.DisplayName),
+				Title:         getTournamentTitle(matches[0]),
 			},
 		}
 
@@ -604,4 +604,26 @@ func (bc *DotaBotChannel) sendMessageWithoutEmbeds(messageContent string) {
 		editMessage.Flags |= discordgo.MessageFlagsSuppressEmbeds
 		bc.session.ChannelMessageEditComplex(editMessage)
 	}
+}
+
+func getTournamentTitle(match types.Match) string {
+	title := ""
+	if match.League.Name != "" {
+		title += match.League.Name
+	}
+
+	if match.Serie.Name != "" {
+		if len(title) > 0 {
+			title += ": "
+		}
+		title += match.Serie.Name
+	}
+
+	if match.Tournament.DisplayName != "" {
+		if len(title) > 0 {
+			title += " - "
+		}
+		title += match.Tournament.DisplayName
+	}
+	return title
 }

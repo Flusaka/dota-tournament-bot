@@ -9,6 +9,17 @@ import (
 	psquery "github.com/flusaka/pandascore-go/clients/queries"
 	pstypes "github.com/flusaka/pandascore-go/types"
 	"golang.org/x/exp/slices"
+	"log"
+)
+
+type StreamPreferenceMatch int8
+
+const (
+	OfficialAndPreferredLanguage StreamPreferenceMatch = iota
+	NonOfficialAndPreferredLanguage
+	OfficialAndNotPreferredLanguage
+	NonOfficialAndNotPreferredLanguage
+	NoMatch
 )
 
 type PandascoreDataSource struct {
@@ -37,7 +48,7 @@ func (ps *PandascoreDataSource) GetRunningTournaments(query *queries.GetTourname
 				DisplayName: input.Name,
 			},
 			Matches: utils.MapStructTo[pstypes.BaseMatch, types.BaseMatch](input.Matches, func(input pstypes.BaseMatch) types.BaseMatch {
-				streamUrl := getBestStreamUrl(input.StreamsList)
+				streamUrl := getBestStreamUrl(input.StreamsList, "en")
 
 				return types.BaseMatch{
 					ID:            input.Id,
@@ -63,7 +74,7 @@ func (ps *PandascoreDataSource) GetUpcomingTournaments(query *queries.GetTournam
 				DisplayName: input.Name,
 			},
 			Matches: utils.MapStructTo[pstypes.BaseMatch, types.BaseMatch](input.Matches, func(input pstypes.BaseMatch) types.BaseMatch {
-				streamUrl := getBestStreamUrl(input.StreamsList)
+				streamUrl := getBestStreamUrl(input.StreamsList, "en")
 
 				return types.BaseMatch{
 					ID:            input.Id,
@@ -102,7 +113,12 @@ func (ps *PandascoreDataSource) GetMatches(query *queries.GetMatches) ([]types.M
 
 	result := make([]types.Match, 0, len(matches))
 	for _, match := range matches {
-		streamUrl := getBestStreamUrl(match.StreamsList)
+		streamUrl := getBestStreamUrl(match.StreamsList, "en")
+
+		// If we have no stream URL, skip it because it's irrelevant
+		if streamUrl == "" {
+			continue
+		}
 
 		teamOneName := "TBD"
 		teamTwoName := "TBD"
@@ -166,7 +182,12 @@ func (ps *PandascoreDataSource) GetUpcomingMatches(query *queries.GetUpcomingMat
 
 	matches := make([]types.Match, 0, len(upcoming))
 	for _, match := range upcoming {
-		streamUrl := getBestStreamUrl(match.StreamsList)
+		streamUrl := getBestStreamUrl(match.StreamsList, "en")
+
+		// If we have no stream URL, skip it because it's irrelevant
+		if streamUrl == "" {
+			continue
+		}
 
 		teamOneName := "TBD"
 		teamTwoName := "TBD"
@@ -228,16 +249,28 @@ func isIncludedTier(expectedTiers []types.Tier, actualTier pstypes.Tier) bool {
 	return slices.Contains(mappedTiers, actualTier)
 }
 
-func getBestStreamUrl(streamList []pstypes.BaseStream) string {
+func getBestStreamUrl(streamList []pstypes.BaseStream, preferredLanguage string) string {
+	match := NoMatch
 	streamUrl := ""
 	for _, stream := range streamList {
 		// If we find an official stream in English at any point, return that
-		if stream.Language == "en" && stream.Official {
+		if stream.Language == preferredLanguage && stream.Official {
 			streamUrl = stream.RawUrl
+			match = OfficialAndPreferredLanguage
 			break
-		} else if stream.Official && streamUrl == "" { // Backup: We at least find the first official stream, even if it's not English, but we continue in case we have an English stream
+		} else if match > NonOfficialAndPreferredLanguage && !stream.Official && stream.Language == preferredLanguage {
 			streamUrl = stream.RawUrl
+			match = NonOfficialAndPreferredLanguage
+		} else if match > OfficialAndNotPreferredLanguage && stream.Official && stream.Language != preferredLanguage {
+			streamUrl = stream.RawUrl
+			match = OfficialAndNotPreferredLanguage
+		} else if match > NonOfficialAndNotPreferredLanguage {
+			streamUrl = stream.RawUrl
+			match = NonOfficialAndNotPreferredLanguage
 		}
+	}
+	if match == NoMatch {
+		log.Printf("Could not find any worthwhile stream URL in list %v\n", streamList)
 	}
 	return streamUrl
 }

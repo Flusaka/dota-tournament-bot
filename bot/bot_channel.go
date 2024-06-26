@@ -151,7 +151,7 @@ func (bc *DotaBotChannel) calculateTimeUntilNextNotification() (time.Duration, e
 
 	// If notification time is still available today, then set notification day to today, otherwise tomorrow
 	day := now.Day()
-	if nowInTimezone.Hour() > bc.config.GetDailyMessageHour() || (nowInTimezone.Hour() == bc.config.GetDailyMessageMinute() && nowInTimezone.Minute() >= bc.config.GetDailyMessageMinute()) {
+	if nowInTimezone.Hour() > bc.config.GetDailyMessageHour() || (nowInTimezone.Hour() == bc.config.GetDailyMessageHour() && nowInTimezone.Minute() >= bc.config.GetDailyMessageMinute()) {
 		day++
 	}
 
